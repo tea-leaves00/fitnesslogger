@@ -1,0 +1,41 @@
+{% extends "base_weightlifting.html" %}
+
+{% block title %}Edit Workout - Workout App{% endblock %}
+
+{% block weightlifting_content %}
+
+<h2>Edit Workout</h2>
+
+{% if workouts %}
+    <form action="{{ url_for('edit_workout', session_date=session_date) }}" method="POST">
+        {% for session_id, session_date, session_notes, workout_log_id, exercise_name, exercise_notes, set_id, set_number, reps, weight in workouts %}
+            {% if loop.first %}
+                <input type="hidden" name="session_id" value="{{ session_id }}">
+                <input type="date" name="session_date" value="{{ session_date }}">
+                <label>Session Notes:</label>
+                <input type="text" name="session_notes" value="{{ session_notes if session_notes else '' }}">
+            {% endif %}
+
+            {% if loop.first or (loop.previtem and loop.previtem[4] != exercise_name) %}
+                <input type="hidden" name="workout_log_id_{{ loop.index }}" value="{{ workout_log_id }}">
+                <label>Exercise Name:</label>
+                <input type="text" name="exercise_name_{{ loop.index }}" value="{{ exercise_name }}">
+                <label>Exercise Notes:</label>
+                <input type="text" name="exercise_notes_{{ loop.index }}" value="{{ exercise_notes if exercise_notes else '' }}">
+            {% endif %}
+
+            <p>
+                Set {{ set_number }}:
+                <input type="hidden" name="set_id_{{ loop.index }}" value="{{ set_id }}"> 
+                <input type="number" name="reps_{{ loop.index }}" value="{{ reps }}" style="width: 60px;"> reps, 
+                <input type="number" name="weight_{{ loop.index }}" value="{{ weight if weight else '' }}" style="width: 60px;"> lbs
+            </p>
+        {% endfor %}
+
+        <button type="submit" name="action" value="save">Save Changes</button>
+    </form>
+{% else %}
+    <p>No workouts found.</p>
+{% endif %}
+
+{% endblock %}

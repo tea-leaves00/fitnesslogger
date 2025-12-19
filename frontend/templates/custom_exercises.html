@@ -1,0 +1,42 @@
+{% extends "base_weightlifting.html" %}
+
+{% block title %} Custom Exercises - Workout App {% endblock %}
+
+{% block weightlifting_content %}
+
+<p>Not satisfied with the current list of exercises? 
+    Here, you can add custom exercises that will show up in the exercises list only for your profile. 
+    You can add, edit, delete or view your created custom exercises from this page at anytime.</p>
+
+<form method="POST">
+    <label for="create_custom_exercise">Add a custom exercise</label>
+    <input type="text" name="create_custom_exercise" id="create_custom_exercise">
+    <button type="submit" name="action" value="add_exercise">Add Exercise</button>
+</form>
+
+<form method="POST">
+    <button type="submit" name="action" value="view_exercises">View your Custom Exercises</button>
+</form>
+
+{% if custom_exercises%}
+    {% for exercise in custom_exercises %}
+        <ul>
+            <li>{{ exercise }}</li>
+        </ul>
+    {% endfor %}
+    <form method="POST">
+        <button type="submit" name="action" value="edit_exercises">Edit exercises</button>
+    </form>
+    {% if editing_exercise %}
+        {% for exercise in custom_exercises %}
+            <ul>
+                <li><form method="POST"><input type="text" value="{{ exercise }}"></form></li>
+            </ul>
+        {% endfor %}
+    {% endif %}
+{% endif %}
+
+
+
+{% endblock %}
+

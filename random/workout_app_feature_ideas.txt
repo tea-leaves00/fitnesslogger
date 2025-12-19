@@ -1,0 +1,35 @@
+
+1. delte entire workout (Cascade on delete)
+
+2. Delete a Specific Exercise from a Session:
+   - Instead of deleting the entire session, allow the user to remove just one exercise (and its sets) from a workout session.
+
+3. delete set from workout
+
+3. Edit a Logged Exercise:
+   - Provide functionality to update the reps, weight, or notes of an already logged exercise in a session.
+   -edit workout date??!?!
+
+
+7. Display Workout Stats:
+   - Show statistics like:
+     - Total workouts logged
+     - Most frequently performed exercises
+     - Average reps and weight for a specific exercise
+     - Progress over time (e.g., increase in weight lifted for a particular exercise)
+
+8. Export Workout Data:
+   - Provide an option to export all workouts or workouts within a date range to a CSV file for backup or analysis.
+
+9. Import Workout Data:
+   - Allow users to import workout data from a CSV file. This could be useful for restoring from a backup or transferring data from another system.
+
+10. Search Exercises by Muscle Group:
+    - You've already partially implemented this, but you could expand it to show not only exercises but also when they were last performed and how often they appear in workout logs.
+
+11. Summary of Last Week’s Workouts:
+    - Automatically generate a summary of workouts completed in the last 7 days, showing the exercises, sets, reps, and any notes.
+
+12. Clear All Data (Danger Zone):
+    - Add a utility to clear all data from the database, maybe as a reset option.
+

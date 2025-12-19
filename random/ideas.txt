@@ -1,0 +1,3 @@
+Modified log_sets() that accepts an optional filtered list
+"Quick log" option that lets you pick from the filtered list immediately
+Workout templates based on muscle groups (like "leg day" preset)
