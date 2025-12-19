@@ -5,6 +5,8 @@ from sql_functions import *
 app = Flask(__name__)
 app.secret_key = 'something'
 
+#testing testing 123
+
 # == HOME ==
 @app.route('/')
 def weightlifting_index():
