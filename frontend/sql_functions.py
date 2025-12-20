@@ -17,6 +17,13 @@ def close_connection(conn):
     conn.close()
 
 
+# == SELECT ==
+def get_exercise_id(exercise_name):
+    conn, c = establish_connection()
+    c.execute("SELECT exercise_id FROM exercises WHERE exercise_name = ?", (exercise_name,))
+    exercise_id = c.fetchone()[0]
+    close_connection(conn)
+    return exercise_id
 
 
 # == EDITS ==
@@ -46,6 +53,7 @@ def edit_custom_exercises(user_id, exercise):
         conn.rollback()
     close_connection(conn)
     return
+
 
 # == DISPLAY ==
 def display_exercises():
@@ -98,13 +106,13 @@ def view_custom_exercises(user_id):
     return custom_exercises
 
 
-
 # == INSERT ==
 def create_custom_exercise(user_id, exercise):
     conn, c = establish_connection()
     c.execute("INSERT INTO custom_exercises (user_id, exercise_name) VALUES (?, ?)", (user_id, exercise))
     close_connection(conn)
 
+# test this out with try except blocks, in case session row cant be inserted
 def insert_session(session_date, session_notes, user_id):
     conn, c = establish_connection()
     c.execute("""
@@ -115,7 +123,23 @@ def insert_session(session_date, session_notes, user_id):
     close_connection(conn)
     return session_id
 
+def insert_workout_log(session_id, exercise_id, exercise_notes):
+    conn, c = establish_connection()
+    c.execute("""
+                INSERT INTO workout_logs (session_id, exercise_id, exercise_notes)
+                VALUES (?, ?, ?)
+            """, (session_id, exercise_id, exercise_notes))
+    workout_log_id = c.lastrowid
+    close_connection(conn)
+    return workout_log_id
 
+def insert_sets(workout_log_id, set_number, reps, weight):
+    conn, c = establish_connection()
+    c.execute("""
+            INSERT INTO workout_sets (workout_log_id, set_number, reps, weight)
+            VALUES (?, ?, ?, ?)
+        """, (workout_log_id, set_number, reps, weight))
+    close_connection(conn)
 
 
     

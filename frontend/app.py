@@ -5,7 +5,6 @@ from sql_functions import *
 app = Flask(__name__)
 app.secret_key = 'something'
 
-#testing testing 123
 
 # == HOME ==
 @app.route('/')
@@ -28,6 +27,7 @@ def log_workout():
             if not exercise_notes:
                 exercise_notes = session.get('exercise_notes', '')
 
+            sets = request.form.get('sets')
             reps = request.form.get('reps')
             bodyweight = request.form.get('bodyweight')
             weight = request.form.get('weight')
@@ -44,21 +44,14 @@ def log_workout():
 
             if 'current_sets' not in session:
                 session['current_sets'] = []
-                session['current_set_number'] = 1
-
-            if session.get('current_exercise') != exercise_name:
-                session['current_exercise'] = exercise_name
-                session['current_set_number'] = 1
                 
-
             session['current_sets'].append({
+                'sets': sets,
                 'exercise': exercise_name,
                 'exercise_notes': exercise_notes,
                 'reps': reps, 
                 'weight': weight,
-                'set_number': session['current_set_number']
             })
-
 
             session.modified = True
             session['current_set_number'] += 1
@@ -191,11 +184,6 @@ def reset():
 # == POST WORKOUT ==
 @app.route('/finish_workout')
 def finish_workout():
-    conn = sqlite3.connect('../backend/exercises.db')
-    c = conn.cursor()
-
-    print(f"Session current_sets: {session.get('current_sets', 'NOT FOUND')}")
-
     if 'current_sets' not in session or not session['current_sets']:
         flash("No sets to save!")
         return redirect(url_for('log_workout'))
@@ -205,34 +193,24 @@ def finish_workout():
         return redirect(url_for('log_workout'))
 
     session_id = session['current_workout_id']
+    current_sets = session['current_sets']
     exercises_processed = set()
-    for set_data in session['current_sets']:
+    for set_data in current_sets:
         exercise_name = set_data['exercise']
+        exercise_notes = set_data['exercise_notes']
         
         # Only create workout_logs entry once per exercise
         if exercise_name not in exercises_processed:
-            c.execute("SELECT exercise_id FROM exercises WHERE exercise_name = ?", (exercise_name,))
-            exercise_id = c.fetchone()[0]
-
-            if exercise_id is None:
-                print(f"Exercise '{exercise_name}' not found in database!")
-                continue
+            exercise_id = get_exercise_id(exercise_name)
             
-            c.execute("""
-                INSERT INTO workout_logs (session_id, exercise_id, exercise_notes)
-                VALUES (?, ?, ?)
-            """, (session_id, exercise_id, set_data['exercise_notes']))
-            workout_log_id = c.lastrowid
-            
+            workout_log_id = insert_workout_log(session_id, exercise_id, exercise_notes)
             exercises_processed.add(exercise_name)
 
-        c.execute("""
-            INSERT INTO workout_sets (workout_log_id, set_number, reps, weight)
-            VALUES (?, ?, ?, ?)
-        """, (workout_log_id, set_data['set_number'], set_data['reps'], set_data['weight']))
+        set_number = 1
+        for set_number in range(len(set_data['sets'])):
+            insert_sets(workout_log_id, set_number)
+            set_number += 1
 
-    conn.commit()
-    conn.close()
 
     session.clear()
     flash("Workout logged successfully!")
