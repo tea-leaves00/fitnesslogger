@@ -18,11 +18,9 @@ def close_connection(conn):
 
 
 # == SELECT ==
-def get_exercise_id(exercise_name):
-    conn, c = establish_connection()
+def get_exercise_id(c, exercise_name):
     c.execute("SELECT exercise_id FROM exercises WHERE exercise_name = ?", (exercise_name,))
     exercise_id = c.fetchone()[0]
-    close_connection(conn)
     return exercise_id
 
 
@@ -123,23 +121,20 @@ def insert_session(session_date, session_notes, user_id):
     close_connection(conn)
     return session_id
 
-def insert_workout_log(session_id, exercise_id, exercise_notes):
-    conn, c = establish_connection()
+def insert_workout_log(c, session_id, exercise_id, exercise_notes):
     c.execute("""
                 INSERT INTO workout_logs (session_id, exercise_id, exercise_notes)
                 VALUES (?, ?, ?)
             """, (session_id, exercise_id, exercise_notes))
     workout_log_id = c.lastrowid
-    close_connection(conn)
     return workout_log_id
 
-def insert_sets(workout_log_id, set_number, reps, weight):
-    conn, c = establish_connection()
+def insert_sets(c, workout_log_id, set_number, reps, weight):
     c.execute("""
             INSERT INTO workout_sets (workout_log_id, set_number, reps, weight)
             VALUES (?, ?, ?, ?)
         """, (workout_log_id, set_number, reps, weight))
-    close_connection(conn)
+
 
 
     

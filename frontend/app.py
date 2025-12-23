@@ -27,10 +27,10 @@ def log_workout():
             if not exercise_notes:
                 exercise_notes = session.get('exercise_notes', '')
 
-            sets = request.form.get('sets')
-            reps = request.form.get('reps')
+            sets = int(request.form.get('sets'))
+            reps = int(request.form.get('reps'))
             bodyweight = request.form.get('bodyweight')
-            weight = request.form.get('weight')
+            weight = float(request.form.get('weight'))
 
             if bodyweight:
                 weight = None
@@ -195,23 +195,23 @@ def finish_workout():
     session_id = session['current_workout_id']
     current_sets = session['current_sets']
     exercises_processed = set()
-    for set_data in current_sets:
-        exercise_name = set_data['exercise']
-        exercise_notes = set_data['exercise_notes']
-        
-        # Only create workout_logs entry once per exercise
-        if exercise_name not in exercises_processed:
-            exercise_id = get_exercise_id(exercise_name)
+
+    conn, c = establish_connection()
+    try:
+        for set_data in current_sets:
+            # Only create workout_logs entry once per exercise
+            if set_data['exercise'] not in exercises_processed:
+                exercise_id = get_exercise_id(c, set_data['exercise'])
+                
+                workout_log_id = insert_workout_log(c, session_id, exercise_id, set_data['exercise_notes'])
+                exercises_processed.add(set_data['exercise'])
+
+            for set_number in range(1, set_data['sets'] + 1):
+                insert_sets(c, workout_log_id, set_number, set_data['reps'], set_data['weight'])
+    finally:
+        close_connection(conn)
+
             
-            workout_log_id = insert_workout_log(session_id, exercise_id, exercise_notes)
-            exercises_processed.add(exercise_name)
-
-        set_number = 1
-        for set_number in range(len(set_data['sets'])):
-            insert_sets(workout_log_id, set_number)
-            set_number += 1
-
-
     session.clear()
     flash("Workout logged successfully!")
     return redirect(url_for('log_workout'))
