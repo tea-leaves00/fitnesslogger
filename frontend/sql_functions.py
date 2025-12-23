@@ -136,6 +136,18 @@ def insert_sets(c, workout_log_id, set_number, reps, weight):
         """, (workout_log_id, set_number, reps, weight))
 
 
+# == CARDIO ==
+def log_cardio_duration():
+    duration = input("Enter the duration (HH:MM:SS) of the cardio session: ").strip()
+    try: 
+        time = datetime.strptime(duration, '%H:%M:%S')
+        break
+    except ValueError:
+        print("\nInvalid time format. Please enter the time as HH:MM:SS.\n")
+        time.sleep(1)
+
+    db_duration = (time.hour * 3600) + (time.minute * 60) + time.second
+    return db_duration, duration
 
     
 
