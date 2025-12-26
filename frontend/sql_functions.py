@@ -137,17 +137,36 @@ def insert_sets(c, workout_log_id, set_number, reps, weight):
 
 
 # == CARDIO ==
-def log_cardio_duration():
-    duration = input("Enter the duration (HH:MM:SS) of the cardio session: ").strip()
-    try: 
-        time = datetime.strptime(duration, '%H:%M:%S')
-        break
-    except ValueError:
-        print("\nInvalid time format. Please enter the time as HH:MM:SS.\n")
-        time.sleep(1)
+def get_db_duration(hours, minutes, seconds):
+    duration = (hours * 3600) + (minutes * 60) + seconds
+    return duration
 
-    db_duration = (time.hour * 3600) + (time.minute * 60) + time.second
-    return db_duration, duration
+def log_cardio_session(c, session_date, notes, cardio_type, user_id):
+    c.execute("SELECT cario_type_id FROM cardio_types WHERE cardio_type = ?", (cardio_type,))
+    cardio_type_id = c.fetchone()[0]
+
+    c.execute("""
+        INSERT INTO cardio_sessions (session_date, session_notes, cardio_type_id, user_id)
+        VALUES (?, ?, ?, ?)
+    """, (session_date, notes if notes else None, cardio_type_id, user_id))
+    session_id = c.lastrowid
+    return session_id
+
+def log_cardio_log(c, cardio_session_id, duration, distance, distance_unit, intensity):
+    c.execute("""
+        INSERT INTO cardio_logs (cardio_session_id, duration, distance, distance_unit, intensity)
+        VALUES (?, ?, ?, ?, ?)
+        """, (cardio_session_id, duration, 
+        distance if distance else None, distance_unit if distance_unit else None,
+        intensity if intensity else None))
+
+def display_cardio_types():
+    conn, c = establish_connection()
+    c.execute("SELECT cardio_type_name FROM cardio_types")
+    cardio_types = sorted([row[0] for row in c.fetchall()])
+    close_connection(conn)
+    return cardio_types
+
 
     
 

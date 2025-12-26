@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block navigation %}
+<nav>
+    <ul>
+        <li><a href="{{ url_for('cardio_index') }}">Home</a></li
+    </ul>
+</nav>
+{% endblock %}
+
+{% block content %}
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+        {% for message in messages %}
+        <div style="color: blue; font-weight: bold; padding: 10px; margin: 10px 0;">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+{% block cardio_content %}{% endblock %}
+{% endblock %}

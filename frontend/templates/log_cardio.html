@@ -1,0 +1,60 @@
+{% extends 'base_cardio.html' %}
+
+{% block title %}Log Cardio{% endblock %}
+
+{% block cardio_content %}
+<form action="/log_cardio" method="POST">
+    <label for="session_date">Session Date</label>
+    <input type="date" name="session_date" id="session_date" required>
+    <label for="session_notes">Session Notes (optional)</label>
+    <input type="text" name="session_notes" id="session_notes">
+
+    <!-- Cardio Logs -->
+    <table>
+        <tr>
+            <th>Cardio Type</th>
+            <th>Duration</th>
+            <th>Distance</th>
+            <th>Intensity</th>
+        </tr>
+
+        {% for log in current_logs %}
+        <tr>
+            <td>{{ log.cardio_type}}</td>
+            <td>{{ log.duration }}</td>
+            <td>{{ log.distance }}</td>
+            <td>{{ log.intensity }}</td>
+        </tr>
+        {% endfor %}
+
+        <tr>
+            <td>
+                <select name="cardio_type" id="cardio_type">
+                    {% if cardio_types %}
+                        {% for cardio_type in cardio_types %}
+                        <option value="{{ cardio_type }}">{{ cardio_type }}</option>
+                        {% endfor %}
+                    {% endif %}
+                </select>
+            </td>
+            <td><input type="number" name="hours" id="duration" min="0" max="24" placeholder="Hours">
+                <input type="number" name="minutes" id="duration"  min="0" max="59" placeholder="Minutes">
+                <input type="number" name="seconds" id="duration"  min="0" max="59" placeholder="Seconds">
+            </td>
+            <td>
+                <input type="number" name="distance" id="distance" step=".01">
+                <select name="distance_unit" id="distance_unit">
+                    <option value="mi">Miles</option>
+                    <option value="km">Kilometers</option>
+                </select>
+            </td>
+            <td><input type="range" name="intensity" id="intensity" min="1" max="10"></td>
+        </tr>
+    </table>
+
+    <button type="submit" name="action" value="add_log">Add Log</button>
+    <button type="submit" name="action" value="finish_session">Finish Session</button>
+    <button type="submit" name="action" value="reset">Reset</button>
+</form>
+
+{% endblock %}

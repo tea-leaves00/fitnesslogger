@@ -9,7 +9,7 @@
 {% block weightlifting_content %}
 <form method="POST">
     <label for="session_date" class="date_and_notes">Session Date</label>
-    <input type="date" id="session_date" class="date_and_notes" name="session_date" value="{{ session.get('session_date', '') }}">
+    <input type="date" id="session_date" class="date_and_notes" name="session_date" value="{{ session.get('session_date', '') }}" required>
     <label for="session_notes" class="date_and_notes">Session Notes</label>
     <input type="text" id="session_notes" class="date_and_notes" name="session_notes" value="{{ session.get('session_notes', '') }}">
 
@@ -24,15 +24,15 @@
         </tr>
         
         <!-- Display entered data and separate different exercises -->
-          {% for set in current_sets %}
-            <tr>
-                <td>{{ set.exercise }}</td>
-                <td>{{ set.exercise_notes }}</td>
-                <td>{{ set.sets }}</td>
-                <td>{{ set.reps }}</td>
-                <td>{{ set.weight }}</td>
-            </tr>
-            {% endfor %}
+        {% for set in current_sets %}
+        <tr>
+            <td>{{ set.exercise }}</td>
+            <td>{{ set.exercise_notes }}</td>
+            <td>{{ set.sets }}</td>
+            <td>{{ set.reps }}</td>
+            <td>{{ set.weight }}</td>
+        </tr>
+        {% endfor %}
         
         <!-- User Input -->
         <tr>

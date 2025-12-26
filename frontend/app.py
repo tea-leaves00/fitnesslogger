@@ -6,8 +6,8 @@ app = Flask(__name__)
 app.secret_key = 'something'
 
 
-# == HOME ==
-@app.route('/')
+# == WEIGHTLIFTING HOME ==
+@app.route('/weightlifting_home')
 def weightlifting_index():
     return render_template('weightlifting_index.html')
 
@@ -213,7 +213,7 @@ def finish_workout():
 
             
     session.clear()
-    flash("Workout logged successfully!")
+    flash("Workout Logged Successfully!")
     return redirect(url_for('log_workout'))
 
 
@@ -240,6 +240,97 @@ def custom_exercises():
 
 
     return render_template('custom_exercises.html', custom_exercises=custom_exercises, editing_exercise=editing_exercise)
+
+
+# == CARDIO HOME ==
+@app.route('/cardio_home', ['GET', 'POST'])
+def cardio_index():
+    return render_template('cardio_index.html')
+
+
+# == LOG CARDIO ==
+@app.route('/log_cardio', methods=['GET', 'POST'])
+def log_cardio():
+    cardio_types = display_cardio_types()
+    user_id = "1"
+
+    if request.method == 'POST':
+        if request.form.get('action') == 'add_log':
+            if 'session_date' not in session:
+                session_date = request.form.get('session_date')
+                session_notes = request.form.get('session_notes')
+                session['session_date'] = session_date
+                session['session_notes'] = session_notes
+
+            cardio_type = request.form.get('cardio_type')
+            hours = request.form.get('hours')
+            minutes = request.form.get('minutes')
+            seconds = request.form.get('seconds')
+            duration = get_db_duration(hours, minutes, seconds)
+            distance = request.form.get('distance')
+            distance_unit = request.form.get('distance_unit')
+            intensity = request.form.get('intensity')
+            
+            if 'current_logs' not in session:
+                session['current_logs'] = []
+
+            session['current_logs'].append({
+                'cardio_type': cardio_type,
+                'duration': duration,
+                'distance': distance,
+                'distance_unit': distance_unit,
+                'intensity': intensity
+            })
+        
+        elif request.form.get('action') == 'finish_session':
+            if 'current_logs' not in session:
+                cardio_type = request.form.get('cardio_type')
+                hours = request.form.get('hours')
+                minutes = request.form.get('minutes')
+                seconds = request.form.get('seconds')
+                duration = get_db_duration(hours, minutes, seconds)
+                distance = request.form.get('distance')
+                distance_unit = request.form.get('distance_unit')
+                intensity = request.form.get('intensity')
+                
+                if 'current_logs' not in session:
+                    session['current_logs'] = []
+
+                session['current_logs'].append({
+                    'cardio_type': cardio_type,
+                    'duration': duration,
+                    'distance': distance,
+                    'distance_unit': distance_unit,
+                    'intensity': intensity
+                })
+
+                conn, c = establish_connection()
+                session_id = log_cardio_session(c, session['session_date'], session['session_notes'], cardio_type, user_id)
+                current_logs = session['current_logs']
+                for log in current_logs:
+                    log_cardio_log(c, session_id, log['duration'], log['distance'], log['distance_unit'], log['intensity'])
+                close_connection(conn)
+                session.clear()
+                flash("Cardio Session Logged Successfully!")
+                return redirect(url_for('log_cardio'))
+            else: 
+                conn, c = establish_connection()
+                session_id = log_cardio_session(c, session['session_date'], session['session_notes'], cardio_type, user_id)
+                current_logs = session['current_logs']
+                for log in current_logs:
+                    log_cardio_log(c, session_id, log['duration'], log['distance'], log['distance_unit'], log['intensity'])
+                close_connection(conn)
+                session.clear()
+                flash("Cardio Session Logged Successfully!")
+                return redirect(url_for('log_cardio'))
+
+        elif request.form.get('action') == 'reset':
+            session.clear()
+            return redirect(url_for('log_cardio'))
+
+    return render_template('log_cardio.html', cardio_types=cardio_types, current_logs = session.get('current_logs', []))
+
+# == 
 
 
 if __name__ == '__main__':
