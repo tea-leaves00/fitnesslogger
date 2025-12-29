@@ -7,17 +7,25 @@
 {% endblock %}
 
 {% block weightlifting_content %}
-<form method="POST">
+{% if date_selection %}
+<form action="/log_workout" method="POST">
+    <h3>Select workout date and enter any notes for the session</h2>
     <label for="session_date" class="date_and_notes">Session Date</label>
     <input type="date" id="session_date" class="date_and_notes" name="session_date" value="{{ session.get('session_date', '') }}" required>
-    <label for="session_notes" class="date_and_notes">Session Notes</label>
+    <label for="session_notes" class="date_and_notes">Session Notes (optional)</label>
     <input type="text" id="session_notes" class="date_and_notes" name="session_notes" value="{{ session.get('session_notes', '') }}">
+    <br>
+    <button type="submit" name="action" value="select_date">Continue to Add Sets</button>
+</form>
+{% endif %}
 
+{% if not date_selection and not different_sets%}
+<form action="/log_workout" method="POST">
     <table>
         <!-- Table Headers -->
         <tr>
             <th>Exercise Name</th>
-            <th>Exercise Notes (One Per Exercise)</th>
+            <th>Exercise Notes (One Sets of Notes Per Exercise)</th>
             <th>Sets</th>
             <th>Reps</th>
             <th>Weight</th>
@@ -45,11 +53,11 @@
                 {% endfor %}
             </select></td>
             <td><input type="text" name="exercise_notes"></td>
-            <td><input type="number" name="sets" value="{{ session.get('sets', '1') }}"></td>
+            <td><input type="number" name="sets" value="{{ session.get('sets', '1') }}">
+                <button type="submit" name="action" value="different_sets">Select if not all sets are the same</button></td>
             <td><input type="number" name="reps" {% if current_sets %}value="{{ current_sets[-1].reps }}"{% endif %} required></td>
             <td><input type="number" step="0.5" min=0 name="weight" {% if current_sets %}value="{{ current_sets[-1].weight }}"{% endif %}>
-                <input type="checkbox" name="bodyweight" value="bodyweight">Bodyweight
-            </td> 
+                <input type="checkbox" name="bodyweight" value="bodyweight">Bodyweight</td> 
         </tr>
 
     </table>
@@ -59,8 +67,14 @@
 
 <a href="/reset">Reset</a>
 <a href="/finish_workout">Finish Workout</a>
+
+{% elif not date_selection and different_sets %}
+<!-- insert same table structure but for different sets (probably gather number of set first so the correct numbers of rows populate) -->
+{% endif %}
 {% endblock %}
 
+
+<!-- JAVASCRIPT -->
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 <script>

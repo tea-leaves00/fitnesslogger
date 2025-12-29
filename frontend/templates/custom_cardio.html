@@ -1,0 +1,44 @@
+{% extends "base_cardio.html" %}
+
+{% block title %} Custom Cardio - Workout App {% endblock %}
+
+{% block cardio_content %}
+<p>Not satisfied with the current list of cardio? 
+    Here, you can add custom cardio that will show up in the cardio types list only for your profile. 
+    You can add, edit, delete or view your custom cardio from this page at anytime.</p>
+
+<form action="/custom_cardio" method="POST">
+    <label for="create_custom_cardio">Add custom cardio</label>
+    <input type="text" name="create_custom_cardio" id="create_custom_cardio">
+    <button type="submit" name="action" value="add_cardio">Add Cardio Type</button>
+</form>
+
+<form action="/custom_cardio" method="POST">
+    <button type="submit" name="action" value="view_custom_cardio">View Your Custom Cardio</button>
+</form>
+
+{% if custom_cardio %}
+    {% for cardio in custom_cardio %}
+        <ul>
+            <li>{{ cardio }}</li>
+        </ul>
+    {% endfor %}
+    <form method="POST">
+        <button type="submit" name="action" value="edit_cardio">Edit</button>
+    </form>
+    {% if editing_cardio %}
+    <form action="/custom_cardio" method="POST">
+        <ul>
+        {% for cardio in custom_cardio %}
+            <li>
+                <input type="hidden" name="old_cardio" value="{{ cardio }}">
+                <input type="text" name="new_cardio" value="{{ cardio }}">
+            </li>
+        {% endfor %}
+        </ul>
+        <button type="submit" name="action" value="save_changes">Save Changes</button>
+    </form>
+    {% endif %}
+{% endif %}
+{% endblock %}
+

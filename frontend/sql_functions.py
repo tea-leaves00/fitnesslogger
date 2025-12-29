@@ -25,7 +25,7 @@ def get_exercise_id(c, exercise_name):
 
 
 # == EDITS ==
-def edit_session_notes(c,workout_date,user_id):
+def edit_session_notes(c, workout_date,user_id):
     try: 
         new_notes = input("Enter your new notes. Press Enter if you'd like to enter nothing: ").strip()
 
@@ -42,16 +42,11 @@ def edit_session_notes(c,workout_date,user_id):
     except sqlite3.Error as e:
         print(f"Database error: {e}")
 
-def edit_custom_exercises(user_id, exercise):
-    conn, c = establish_connection()
-    try:
-        c.execute("UPDATE custom_exercises SET exercise_name = ? WHERE user_id = ?", (exercise, user_id))
-    except sqlite3.Error as e:
-        print(f"database error: {e}")
-        conn.rollback()
-    close_connection(conn)
-    return
+def edit_custom_exercises(c, user_id, new_exercise, old_exercise):
+    c.execute("UPDATE custom_exercises SET exercise_name = ? WHERE user_id = ? AND exercise_name = ?", (new_exercise, user_id, old_exercise))
 
+def edit_custom_cardio(c, user_id, new_cardio, old_cardio):
+    c.execute("UPDATE custom_cardio SET cardio_type = ? WHERE user_id = ? AND cardio_type = ?", (new_cardio, user_id, old_cardio))
 
 # == DISPLAY ==
 def display_exercises():
@@ -103,11 +98,41 @@ def view_custom_exercises(user_id):
     close_connection(conn)
     return custom_exercises
 
+def view_custom_cardio(user_id):
+    conn, c = establish_connection()
+    c.execute("SELECT cardio_type FROM custom_cardio WHERE user_id = ?", (user_id,))
+    data = c.fetchall()
+    custom_cardio = [row[0] for row in data]
+    close_connection(conn)
+    return custom_cardio
+
+def display_cardio_session(session_date, user_id):
+    conn, c = establish_connection()
+    query = """
+        SELECT cardio_sessions.id, cardio_sessions.session_date, cardio_sessions.session_notes,
+        cardio_logs.id, cardio_logs.duration, cardio_logs.distance, cardio_logs.distance_unit, cardio_logs.intensity,
+        cardio_types.cardio_type_name
+        FROM cardio_sessions
+        JOIN cardio_logs ON cardio_sessions.id = cardio_logs.cardio_session_id
+        JOIN cardio_types ON cardio_logs.cardio_type_id = cardio_types.cardio_type_id
+        WHERE cardio_sessions.session_date = ? AND user_id = ?
+        ORDER by cardio_logs.id
+        """
+    
+    c.execute(query, (session_date,user_id))
+    session = c.fetchall()
+    close_connection(conn)
+    return session
 
 # == INSERT ==
 def create_custom_exercise(user_id, exercise):
     conn, c = establish_connection()
     c.execute("INSERT INTO custom_exercises (user_id, exercise_name) VALUES (?, ?)", (user_id, exercise))
+    close_connection(conn)
+
+def create_custom_cardio(user_id, cardio_type):
+    conn, c = establish_connection()
+    c.execute("INSERT INTO custom_cardio (user_id, cardio_type) VALUES (?, ?)", (user_id, cardio_type))
     close_connection(conn)
 
 # test this out with try except blocks, in case session row cant be inserted
@@ -141,22 +166,21 @@ def get_db_duration(hours, minutes, seconds):
     duration = (hours * 3600) + (minutes * 60) + seconds
     return duration
 
-def log_cardio_session(c, session_date, notes, cardio_type, user_id):
-    c.execute("SELECT cario_type_id FROM cardio_types WHERE cardio_type = ?", (cardio_type,))
-    cardio_type_id = c.fetchone()[0]
-
+def log_cardio_session(c, session_date, notes, user_id):
     c.execute("""
         INSERT INTO cardio_sessions (session_date, session_notes, cardio_type_id, user_id)
         VALUES (?, ?, ?, ?)
-    """, (session_date, notes if notes else None, cardio_type_id, user_id))
+    """, (session_date, notes if notes else None, user_id))
     session_id = c.lastrowid
     return session_id
 
-def log_cardio_log(c, cardio_session_id, duration, distance, distance_unit, intensity):
+def log_cardio_log(c, cardio_session_id, cardio_type, duration, distance, distance_unit, intensity):
+    c.execute("SELECT cario_type_id FROM cardio_types WHERE cardio_type = ?", (cardio_type,))
+    cardio_type_id = c.fetchone()[0]
     c.execute("""
-        INSERT INTO cardio_logs (cardio_session_id, duration, distance, distance_unit, intensity)
-        VALUES (?, ?, ?, ?, ?)
-        """, (cardio_session_id, duration, 
+        INSERT INTO cardio_logs (cardio_session_id, cardio_type_id, duration, distance, distance_unit, intensity)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """, (cardio_session_id, cardio_type_id, duration, 
         distance if distance else None, distance_unit if distance_unit else None,
         intensity if intensity else None))
 

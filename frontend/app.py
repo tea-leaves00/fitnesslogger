@@ -1,27 +1,42 @@
-from flask import Flask, render_template, request,redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 import sqlite3
 from sql_functions import *
 
 app = Flask(__name__)
 app.secret_key = 'something'
 
+# == HOME HOME HOME ==
+@app.route('/')
+def index():
+    return render_template('base.html')
 
 # == WEIGHTLIFTING HOME ==
 @app.route('/weightlifting_home')
 def weightlifting_index():
     return render_template('weightlifting_index.html')
 
-
 # == LOG WORKOUT ==
-@app.route('/log_workout', methods = ['POST', 'GET'])
+#-** stillllll need to figure out multiple workouts/sessions per date
+# DONT INSERT INTO DB UNTIL VERY END I THINK IS BEST CUZ AT LEAST IT STAYS IN SESSION
+# ok this is working way better but now need to figure out what happens when someone goes BACK 
+# make each exercise sets on one page and reload page for each new exercise
+
+@app.route('/log_workout', methods=['POST', 'GET'])
 def log_workout():
     exercises = display_exercises()
 
     if request.method == 'POST':
-        if request.form.get('action') == 'add_set':
-            # == FORM DATA ==
+        if request.form.get('action') == 'select_date':
             session_date = request.form.get('session_date')
             session_notes = request.form.get('session_notes')
+            session['session_date'] = session_date
+            session['session_notes'] = session_notes
+            session['date_selection'] = False
+
+        elif request.form.get('action') == 'different_sets':
+            session['different_sets'] = True
+
+        elif request.form.get('action') == 'add_set':
             exercise_name = request.form.get('exercise')
             exercise_notes = request.form.get('exercise_notes')
             if not exercise_notes:
@@ -37,11 +52,6 @@ def log_workout():
             elif not weight:
                 weight = None
 
-            # == SESSION ==
-            if 'session_date' not in session:
-                session['session_date'] = session_date
-                session['session_notes'] = session_notes
-
             if 'current_sets' not in session:
                 session['current_sets'] = []
                 
@@ -54,8 +64,6 @@ def log_workout():
             })
 
             session.modified = True
-            session['current_set_number'] += 1
-
             if 'current_workout_id' not in session:
                 user_id = "1"
 
@@ -64,9 +72,11 @@ def log_workout():
                 
                 
     return render_template('log_workout.html', exercises=exercises, 
-                           current_sets = session.get('current_sets', []))
+                        current_sets = session.get('current_sets', []), 
+                        date_selection=session.setdefault('date_selection', True)
+                        different_sets=session.setdefault('different_sets', False))
 
-# == VIEW AND EDIT WORKOUT ==
+# == VIEW WORKOUT ==
 @app.route('/view_workout', methods= ['GET', 'POST'])
 def view_workout():
     if request.method == 'POST':
@@ -95,13 +105,8 @@ def edit_workout(session_date):
     
 
     if request.method == 'POST':
-        print("Request method:", request.method)
-        print("Form data:", request.form)
-        print("Form keys:", list(request.form.keys()))
-        action = request.form.get('action')
-        if action == 'save':
-            conn = sqlite3.connect('C:/Users/12146/Documents/VS Code Files/Workout_App/backend/exercises.db')
-            c = conn.cursor()
+        if request.form.get('action') == 'save':
+            conn, c = establish_connection()
 
             session_id = request.form.get('session_id')
             new_session_date = request.form.get('session_date')
@@ -175,6 +180,7 @@ def edit_workout(session_date):
 
 
 # == CLEAR ==
+#put this in the log workout route and make it a button in html
 @app.route('/reset')
 def reset():
     session.clear()
@@ -182,6 +188,7 @@ def reset():
 
 
 # == POST WORKOUT ==
+#put this in the log workout route and make it a button in html
 @app.route('/finish_workout')
 def finish_workout():
     if 'current_sets' not in session or not session['current_sets']:
@@ -216,34 +223,40 @@ def finish_workout():
     flash("Workout Logged Successfully!")
     return redirect(url_for('log_workout'))
 
-
-# == CREATE CUSTOM EXERCISE ==
+# == CUSTOM EXERCISES ==
 @app.route('/custom_exercises', methods=['GET', 'POST'])
 def custom_exercises():
     custom_exercises = []
     editing_exercise = False
+    user_id = "1"
 
     if request.method == 'POST':
         if request.form.get('action') == 'add_exercise':
-            user_id = "1"
             custom_exercise = request.form.get('create_custom_exercise')
-
             create_custom_exercise(user_id, custom_exercise)
             flash('Custom exercise added successfully!')
             return redirect(url_for('custom_exercises'))
         elif request.form.get('action') == 'view_exercises':
-            user_id = "1"
             custom_exercises = view_custom_exercises(user_id)
         elif request.form.get('action') == 'edit_exercises':
             editing_exercise = True
-            
+            custom_exercises = view_custom_exercises(user_id)
+        elif request.form.get('action') == 'save_changes':
+            old_exercises = request.form.getlist('old_exercise')
+            new_exercises = request.form.getlist('new_exercise')
 
+            conn, c = establish_connection()
+            for old_exercise, new_exercise in zip(old_exercises, new_exercises):
+                if old_exercise != new_exercise:
+                    edit_custom_exercises(c, user_id, new_exercise, old_exercise)
+            close_connection(conn)
 
     return render_template('custom_exercises.html', custom_exercises=custom_exercises, editing_exercise=editing_exercise)
 
 
+
 # == CARDIO HOME ==
-@app.route('/cardio_home', ['GET', 'POST'])
+@app.route('/cardio_home', methods=['GET', 'POST'])
 def cardio_index():
     return render_template('cardio_index.html')
 
@@ -283,6 +296,11 @@ def log_cardio():
             })
         
         elif request.form.get('action') == 'finish_session':
+            if 'session_date' not in session:
+                session_date = request.form.get('session_date')
+                session_notes = request.form.get('session_notes')
+                session['session_date'] = session_date
+                session['session_notes'] = session_notes
             if 'current_logs' not in session:
                 cardio_type = request.form.get('cardio_type')
                 hours = request.form.get('hours')
@@ -305,20 +323,20 @@ def log_cardio():
                 })
 
                 conn, c = establish_connection()
-                session_id = log_cardio_session(c, session['session_date'], session['session_notes'], cardio_type, user_id)
+                session_id = log_cardio_session(c, session['session_date'], session['session_notes'], user_id)
                 current_logs = session['current_logs']
                 for log in current_logs:
-                    log_cardio_log(c, session_id, log['duration'], log['distance'], log['distance_unit'], log['intensity'])
+                    log_cardio_log(c, session_id, log['cardio_type'], log['duration'], log['distance'], log['distance_unit'], log['intensity'])
                 close_connection(conn)
                 session.clear()
                 flash("Cardio Session Logged Successfully!")
                 return redirect(url_for('log_cardio'))
             else: 
                 conn, c = establish_connection()
-                session_id = log_cardio_session(c, session['session_date'], session['session_notes'], cardio_type, user_id)
+                session_id = log_cardio_session(c, session['session_date'], session['session_notes'], user_id)
                 current_logs = session['current_logs']
                 for log in current_logs:
-                    log_cardio_log(c, session_id, log['duration'], log['distance'], log['distance_unit'], log['intensity'])
+                    log_cardio_log(c, session_id, log['cardio_type'], log['duration'], log['distance'], log['distance_unit'], log['intensity'])
                 close_connection(conn)
                 session.clear()
                 flash("Cardio Session Logged Successfully!")
@@ -330,8 +348,121 @@ def log_cardio():
 
     return render_template('log_cardio.html', cardio_types=cardio_types, current_logs = session.get('current_logs', []))
 
-# == 
+# == VIEW CARDIO SESSION == 
+@app.route('/view_cardio_session', methods= ['GET', 'POST'])
+def view_cardio_session():
+    if request.method == 'POST':
+        session_date = request.form.get('session_date')
+        user_id = "1"
 
+        cardio_session = display_cardio_session(session_date, user_id)
+        
+        session['current_session'] = cardio_session
+        session['session_searched'] = True
+        session.modified = True
+    else:
+        session['session_searched'] = False
+
+      
+    return render_template('view_cardio_session.html', cardio_session=session.get('current_session', []), 
+                           session_searched=session.get('session_searched', False))
+
+
+# == EDIT CARDIO SESSION == 
+@app.route('/edit_cardio_session/<session_date>', methods=['GET', 'POST'])
+def edit_cardio_session(session_date):
+    user_id = "1"
+    cardio_session = session.get('current_session', [])
+
+    if request.method == 'POST':
+        if request.form.get('action') == 'save':
+            conn, c = establish_connection()
+
+            session_id = request.form.get('session_id')
+            new_session_date = request.form.get('session_date')
+            
+            # Update session date if changed
+            if new_session_date and new_session_date != session_date:
+                c.execute("""
+                    UPDATE cardio_sessions
+                    SET session_date = ?
+                    WHERE id = ?
+                    """, (new_session_date, session_id))
+                
+                return redirect(url_for('edit_cardio_session', session_date=new_session_date))
+            
+            # Update session notes
+            session_notes = request.form.get('session_notes')
+            if session_notes:
+                c.execute("""
+                    UPDATE cardio_sessions 
+                    SET session_notes = ? 
+                    WHERE id = ?
+                """, (session_notes, session_id))
+
+            # Update each cardio log
+            for input in request.form:
+                if input.startswith('log_id_'):
+                    index = input.split('_')[-1]
+                    log_id = request.form.get(f'log_id_{index}')
+                    cardio_type = request.form.get(f'cardio_type_{index}')
+                    duration = request.form.get(f'duration_{index}')
+                    distance = request.form.get(f'distance_{index}')
+                    distance_unit = request.form.get(f'distance_unit_{index}')
+                    intensity = request.form.get(f'intensity_{index}')
+                    
+                    # Get cardio_type_id
+                    result = c.execute("SELECT cardio_type_id FROM cardio_types WHERE cardio_type_name = ?", (cardio_type,)).fetchone()
+                    if result:
+                        cardio_type_id = result[0]
+                        c.execute("""
+                            UPDATE cardio_logs
+                            SET cardio_type_id = ?, duration = ?, distance = ?, distance_unit = ?, intensity = ?
+                            WHERE id = ?
+                        """, (cardio_type_id, duration, 
+                              distance if distance else None, 
+                              distance_unit if distance_unit else None,
+                              intensity if intensity else None,
+                              log_id))
+            
+            conn.commit()
+            conn.close()
+            
+            flash("Cardio session updated successfully!")
+            return redirect(url_for('view_cardio_session'))
+
+    return render_template('edit_cardio_session.html', cardio_session=cardio_session, session_date=session_date)
+
+
+# == CUSTOM CARDIO ==
+@app.route('/custom_cardio', methods=['GET', 'POST'])
+def custom_cardio():
+    custom_cardio = []
+    editing_cardio = False
+    user_id = "1"
+
+    if request.method == 'POST':
+        if request.form.get('action') == 'add_cardio':
+            custom_cardio = request.form.get('create_custom_cardio')
+            create_custom_cardio(user_id, custom_cardio)
+            flash('Custom cardio added successfully!')
+            return redirect(url_for('custom_cardio'))
+        elif request.form.get('action') == 'view_custom_cardio':
+            custom_cardio = view_custom_cardio(user_id)
+        elif request.form.get('action') == 'edit_cardio':
+            editing_cardio = True
+            custom_cardio = view_custom_cardio(user_id)
+        elif request.form.get('action') == 'save_changes':
+            old_cardio = request.form.getlist('old_cardio')
+            new_cardio = request.form.getlist('new_cardio')
+
+            conn, c = establish_connection()
+            for old_card, new_card in zip(old_cardio, new_cardio):
+                if old_card != new_card:
+                    edit_custom_cardio(c, user_id, new_card, old_card)
+            close_connection(conn)
+
+    return render_template('custom_cardio.html', custom_cardio=custom_cardio, editing_cardio=editing_cardio)
 
 if __name__ == '__main__':
     app.run(debug=True)
