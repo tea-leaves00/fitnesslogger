@@ -73,7 +73,7 @@ def log_workout():
                 
     return render_template('log_workout.html', exercises=exercises, 
                         current_sets = session.get('current_sets', []), 
-                        date_selection=session.setdefault('date_selection', True)
+                        date_selection=session.setdefault('date_selection', True),
                         different_sets=session.setdefault('different_sets', False))
 
 # == VIEW WORKOUT ==
