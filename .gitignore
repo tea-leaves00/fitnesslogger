@@ -1,6 +1,0 @@
-.vscode/
-venv/
-random/
-__pycache__/
-*.pyc
-*.db
