@@ -1,3 +1,5 @@
 .vscode/
 venv/
 random/
+__pycache__/
+frontend/__pycache__/
