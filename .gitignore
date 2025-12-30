@@ -2,4 +2,5 @@
 venv/
 random/
 __pycache__/
-frontend/__pycache__/
+*.pyc
+*.db
