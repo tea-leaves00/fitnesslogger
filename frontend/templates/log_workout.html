@@ -6,6 +6,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
 {% endblock %}
 
+<!-- Start with Logging Date and Notes -->
 {% block weightlifting_content %}
 {% if date_selection %}
 <form action="/log_workout" method="POST">
@@ -19,96 +20,76 @@
 </form>
 {% endif %}
 
-{% if not date_selection and not different_sets%}
+<!-- Set Logging -->
+{% if not date_selection %}
 <form action="/log_workout" method="POST">
     <table>
         <!-- Table Headers -->
         <tr>
             <th>Exercise Name</th>
-            <th>Exercise Notes (One Sets of Notes Per Exercise)</th>
+            <th>Exercise Notes (One Per Exercise)</th>
             <th>Sets</th>
             <th>Reps</th>
             <th>Weight</th>
         </tr>
         
         <!-- Display entered data and separate different exercises -->
-        {% for set in current_sets %}
-        <tr>
-            <td>{{ set.exercise }}</td>
-            <td>{{ set.exercise_notes }}</td>
-            <td>{{ set.sets }}</td>
-            <td>{{ set.reps }}</td>
-            <td>{{ set.weight }}</td>
-        </tr>
+          {% for set in current_sets %}
+            {% if set.same_sets == True %}
+            <tr>
+                <td>{{ set.exercise }}</td>
+                <td>{{ set.exercise_notes }}</td>
+                <td>{{ set.sets }} Sets</td>
+                <td>{{ set.reps }}</td>
+                <td>{{ set.weight }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td>{{ set.exercise }}</td>
+                <td>{{ set.exercise_notes }}</td>
+                <td>Set No. {{ set.set_number }}</td>
+                <td>{{ set.reps }}</td>
+                <td>{{ set.weight }}</td>
+            </tr>
+            {% endif %}
         {% endfor %}
         
         <!-- User Input -->
         <tr>
-            <td><select name="exercise" id="exercise-select" required>
+            <td>
+                <p>Exercises</p>
+            <select name="exercise" id="exercise-select">
+                <option value="" diabled selected>-- Select Exercise --</option>
                 {% for exercise in exercises %}
                 <option value="{{ exercise }}" 
                     {% if current_sets and current_sets[-1].exercise == exercise %}selected{% endif %}>
                     {{ exercise }}
                 </option>
                 {% endfor %}
-            </select></td>
-            <td><input type="text" name="exercise_notes"></td>
-            <td><input type="number" name="sets" value="{{ session.get('sets', '1') }}">
-                <button type="submit" name="action" value="different_sets">Select if not all sets are the same</button></td>
-            <td><input type="number" name="reps" {% if current_sets %}value="{{ current_sets[-1].reps }}"{% endif %} required></td>
-            <td><input type="number" step="0.5" min=0 name="weight" {% if current_sets %}value="{{ current_sets[-1].weight }}"{% endif %}>
-                <input type="checkbox" name="bodyweight" value="bodyweight">Bodyweight</td> 
-        </tr>
-
-    </table>
-
-    <button type="submit" name="action" value="add_set">Add Set</button>    
-</form>
-
-<a href="/reset">Reset</a>
-<a href="/finish_workout">Finish Workout</a>
-
-{% elif not date_selection and different_sets %}
-<form method="POST">
-    <label for="session_date" class="date_and_notes">Session Date</label>
-    <input type="date" id="session_date" class="date_and_notes" name="session_date" value="{{ session.get('session_date', '') }}">
-    <label for="session_notes" class="date_and_notes">Session Notes</label>
-    <input type="text" id="session_notes" class="date_and_notes" name="session_notes" value="{{ session.get('session_notes', '') }}">
-
-    <table>
-        <!-- Table Headers -->
-        <tr>
-            <th>Exercise Name</th>
-            <th>Exercise Notes (One Per Exercise)</th>
-            <th>Set</th>
-            <th>Reps</th>
-            <th>Weight</th>
-        </tr>
-        
-        <!-- Display entered data and separate different exercises -->
-          {% for set in current_sets %}
-            <tr>
-                <td>{{ set.exercise }}</td>
-                <td>{{ set.exercise_notes }}</td>
-                <td>{{ set.set_number }}</td>
-                <td>{{ set.reps }}</td>
-                <td>{{ set.weight }}</td>
-            </tr>
-            {% endfor %}
-        
-        <!-- User Input -->
-        <tr>
-            <td><select name="exercise" id="exercise-select" required>
-                {% for exercise in exercises %}
-                <option value="{{ exercise }}" 
-                    {% if current_sets and current_sets[-1].exercise == exercise %}selected{% endif %}>
-                    {{ exercise }}
+            </select>
+            {% if custom_exercises %}
+            <p>Custom Exercises</p>
+            <select name="custom_exercise" id="custom-exercise-select">
+                <option value="" disabled selected>-- Select Custom Exercise --</option>
+                {% for custom_exercise in custom_exercises %}
+                <option value="{{custom_exercise}}">
+                    {{custom_exercise}}
                 </option>
                 {% endfor %}
-            </select></td>
+            </select>
+            {% endif %}
+            </td>
+
             <td><input type="text" name="exercise_notes"></td>
-            <td>{{ session.get('current_set_number', '1') }}</td>
-            <td><input type="number" name="reps" {% if current_sets %}value="{{ current_sets[-1].reps }}"{% endif %} required></td>
+            <td>
+            {% if session.get('same_sets') %}
+                <input type="number" name="sets" min="1"> Sets
+            {% else %}
+                Set No. {{ session.get('current_set_number', '1') }}
+                <button type="submit" name="action" value="same_sets">Are all sets the same for this exercise?</button>
+            {% endif %}
+            </td>
+            <td><input type="number" name="reps" {% if current_sets %}value="{{ current_sets[-1].reps }}"{% endif %}></td>
             <td><input type="number" step="0.5" min=0 name="weight" {% if current_sets %}value="{{ current_sets[-1].weight }}"{% endif %}>
                 <input type="checkbox" name="bodyweight" value="bodyweight">Bodyweight
             </td> 
@@ -117,6 +98,8 @@
     </table>
 
     <button type="submit" name="action" value="add_set">Add Set</button>    
+    <button type="submit" name="action" value="reset">Reset</button>
+    <button type="submit" name="action" value="finish_workout">Finish Workout</button>
 </form>
 {% endif %}
 {% endblock %}
@@ -126,47 +109,23 @@
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const element = document.querySelector('#exercise-select');
-        const choices = new Choices(element, {
+document.addEventListener('DOMContentLoaded', function() {
+    const exerciseSelect = document.querySelector('#exercise-select');
+    const customExerciseSelect = document.querySelector('#custom-exercise-select');
+
+    if (exerciseSelect) {
+        new Choices(exerciseSelect, {
             searchEnabled: true,
             itemSelectText: '',
         });
-    });
-</script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const element = document.querySelector('#exercise-select');
-    const choices = new Choices(element, {
-        searchEnabled: true,
-        itemSelectText: '',
-    });
-
-    // Function to update notes field based on selected exercise
-    function updateNotesField() {
-        const selectedExercise = element.value;
-        const currentSets = {{ current_sets|tojson|safe }};
-        
-        // Find the last set with this exercise
-        const lastSet = [...currentSets].reverse().find(set => set.exercise === selectedExercise);
-        
-        const notesField = document.querySelector('input[name="exercise_notes"]');
-        if (lastSet) {
-            notesField.value = lastSet.exercise_notes;
-            notesField.disabled = true;
-        } else {
-            notesField.value = '';
-            notesField.disabled = false;
-        }
     }
 
-    // Run on page load
-    updateNotesField();
-
-    // Run when dropdown changes
-    element.addEventListener('change', function(event) {
-        updateNotesField();
-    });
+    if (customExerciseSelect) {
+        new Choices(customExerciseSelect, {
+            searchEnabled: true,
+            itemSelectText: '',
+        });
+    }
 });
 </script>
 {% endblock %}

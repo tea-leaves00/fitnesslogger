@@ -1,29 +1,44 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
+# from flask_login import LoginManager, UserMixin
+# from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
 from sql_functions import *
 
+
 app = Flask(__name__)
 app.secret_key = 'something'
+# login_manager = LoginManager()
+# login_manager.init_app(app)
+# login_manager.login_view = 'login' 
 
-# == HOME HOME HOME ==
+
+# == MAIN PAGE ==
 @app.route('/')
 def index():
     return render_template('base.html')
 
-# == WEIGHTLIFTING HOME ==
+
+# === WEIGHTLIFTING ===
+# == HOME ==
 @app.route('/weightlifting_home')
 def weightlifting_index():
     return render_template('weightlifting_index.html')
 
 # == LOG WORKOUT ==
-#-** stillllll need to figure out multiple workouts/sessions per date
-# DONT INSERT INTO DB UNTIL VERY END I THINK IS BEST CUZ AT LEAST IT STAYS IN SESSION
-# ok this is working way better but now need to figure out what happens when someone goes BACK 
-# make each exercise sets on one page and reload page for each new exercise
+# ok this is working way better but now need to figure out what happens when someone goes BACK
+# little trash can icons next to each set
+# form resubmission fucks things up (for example it input a duplicate entry and then upon viewing the workout it say set 1 1 2 2)
+# same_sets button resets everything cuz it redirects
+# reset should not pop everything...like it shouldnt go all the way back to date selection....idk maybe it should???
+# error handling for not entering sets
+# if you do finish workout before adding last set, handle that maybe
+#do same thing as log cardio where it will input the first set if not added log, OR even better error handling
 
 @app.route('/log_workout', methods=['POST', 'GET'])
 def log_workout():
+    user_id = "1"
     exercises = display_exercises()
+    custom_exercises = display_custom_exercises(user_id)
 
     if request.method == 'POST':
         if request.form.get('action') == 'select_date':
@@ -32,55 +47,133 @@ def log_workout():
             session['session_date'] = session_date
             session['session_notes'] = session_notes
             session['date_selection'] = False
+            print(session_notes)
 
-        elif request.form.get('action') == 'different_sets':
-            session['different_sets'] = True
+        elif request.form.get('action') == 'same_sets':
+            session['same_sets'] = True
+            session.modified = True
 
         elif request.form.get('action') == 'add_set':
             exercise_name = request.form.get('exercise')
+            custom_exercise = request.form.get('custom_exercise')
             exercise_notes = request.form.get('exercise_notes')
+
+            # light error handling
+            if exercise_name and custom_exercise:
+                flash("Please select either a standard exercise OR a custom exercise, not both")
+                return redirect(url_for('log_workout'))
+            if not exercise_name and not custom_exercise:
+                flash("Please select an exercise")
+                return redirect(url_for('log_workout'))
             if not exercise_notes:
                 exercise_notes = session.get('exercise_notes', '')
+            if not request.form.get('reps'):
+                flash('Reps are required')
+                return redirect(url_for('log_workout'))
 
-            sets = int(request.form.get('sets'))
+            selected_exercise = exercise_name if exercise_name else custom_exercise
             reps = int(request.form.get('reps'))
             bodyweight = request.form.get('bodyweight')
-            weight = float(request.form.get('weight'))
+            weight = (request.form.get('weight'))
 
             if bodyweight:
                 weight = None
-            elif not weight:
+            elif weight:
+                weight = float(weight)
+            else:
                 weight = None
 
             if 'current_sets' not in session:
                 session['current_sets'] = []
                 
-            session['current_sets'].append({
-                'sets': sets,
-                'exercise': exercise_name,
+            if session.get('same_sets'):
+                if not request.form.get('sets'):
+                    flash('Enter Number of Sets')
+                    return redirect(url_for('log_workout'))
+                sets = int(request.form.get('sets'))
+                session['current_sets'].append({
+                    'same_sets': True,
+                    'exercise': selected_exercise,
+                    'exercise_notes': exercise_notes,
+                    'sets': sets,
+                    'reps': reps, 
+                    'weight': weight,
+                })
+                session['same_sets'] = False
+                print(session['current_sets'])
+
+            else: 
+                if 'current_set_number' not in session:
+                    session['current_set_number'] = 1
+
+                if session.get('current_exercise') != selected_exercise:
+                    session['current_exercise'] = selected_exercise
+                    session['current_set_number'] = 1
+                
+                session['current_sets'].append({
+                'same_sets': False,
+                'exercise': selected_exercise,
                 'exercise_notes': exercise_notes,
+                'set_number': session['current_set_number'],
                 'reps': reps, 
-                'weight': weight,
-            })
+                'weight': weight
+                })
+                
+                session['current_set_number'] += 1
 
             session.modified = True
+
+        elif request.form.get('action') == 'reset':
+            session.clear()
+            return redirect(url_for('log_workout'))
+        
+        elif request.form.get('action') == 'finish_workout':
             if 'current_workout_id' not in session:
                 user_id = "1"
-
-                session_id = insert_session(session_date, session_notes, user_id)
+                session_id = insert_session(session['session_date'], session['session_notes'], user_id)
                 session['current_workout_id'] = session_id
-                
-                
+            
+            exercises_processed = set()
+            conn, c = establish_connection()
+            try:
+                for set_data in session['current_sets']:
+                    # Only create workout_logs entry once per exercise
+                    if set_data['exercise'] not in exercises_processed:
+                        if set_data['exercise'] in custom_exercises:
+                            exercise_id = None
+                            custom_exercise_id = get_custom_exercise_id(c, set_data['exercise'], user_id)
+                        else:
+                            exercise_id = get_exercise_id(c, set_data['exercise'])
+                            custom_exercise_id = None
+                        
+                        workout_log_id = insert_workout_log(c, session_id, exercise_id, custom_exercise_id, set_data['exercise_notes'])
+                        exercises_processed.add(set_data['exercise'])
+
+                    if set_data['same_sets'] == True:
+                        for set_number in range(1, set_data['sets'] + 1):
+                            insert_sets(c, workout_log_id, set_number, set_data['reps'], set_data['weight'])
+                    else:
+                        insert_sets(c, workout_log_id, set_data['set_number'], set_data['reps'], set_data['weight'])
+            finally:
+                close_connection(conn)
+
+            session.clear()
+            flash("Workout Logged Successfully!")
+            return redirect(url_for('log_workout'))
+
+            
     return render_template('log_workout.html', exercises=exercises, 
+                        custom_exercises=custom_exercises,
                         current_sets = session.get('current_sets', []), 
                         date_selection=session.setdefault('date_selection', True),
-                        different_sets=session.setdefault('different_sets', False))
+                        same_sets=session.setdefault('same_sets', False))
 
 # == VIEW WORKOUT ==
 @app.route('/view_workout', methods= ['GET', 'POST'])
 def view_workout():
     if request.method == 'POST':
         session_date = request.form.get('session_date')
+        session['session_date'] = session_date
         user_id = "1"
 
         workouts = display_workout(session_date, user_id)
@@ -179,50 +272,6 @@ def edit_workout(session_date):
     return render_template('edit_workout.html', workouts=workouts, session_date=session_date)
 
 
-# == CLEAR ==
-#put this in the log workout route and make it a button in html
-@app.route('/reset')
-def reset():
-    session.clear()
-    return redirect(url_for('log_workout'))
-
-
-# == POST WORKOUT ==
-#put this in the log workout route and make it a button in html
-@app.route('/finish_workout')
-def finish_workout():
-    if 'current_sets' not in session or not session['current_sets']:
-        flash("No sets to save!")
-        return redirect(url_for('log_workout'))
-    
-    if 'current_workout_id' not in session:  # TEST THIS OUT FURTHER
-        flash("No workout session found!")
-        return redirect(url_for('log_workout'))
-
-    session_id = session['current_workout_id']
-    current_sets = session['current_sets']
-    exercises_processed = set()
-
-    conn, c = establish_connection()
-    try:
-        for set_data in current_sets:
-            # Only create workout_logs entry once per exercise
-            if set_data['exercise'] not in exercises_processed:
-                exercise_id = get_exercise_id(c, set_data['exercise'])
-                
-                workout_log_id = insert_workout_log(c, session_id, exercise_id, set_data['exercise_notes'])
-                exercises_processed.add(set_data['exercise'])
-
-            for set_number in range(1, set_data['sets'] + 1):
-                insert_sets(c, workout_log_id, set_number, set_data['reps'], set_data['weight'])
-    finally:
-        close_connection(conn)
-
-            
-    session.clear()
-    flash("Workout Logged Successfully!")
-    return redirect(url_for('log_workout'))
-
 # == CUSTOM EXERCISES ==
 @app.route('/custom_exercises', methods=['GET', 'POST'])
 def custom_exercises():
@@ -255,7 +304,9 @@ def custom_exercises():
 
 
 
-# == CARDIO HOME ==
+
+# === CARDIO ===
+# == HOME ==
 @app.route('/cardio_home', methods=['GET', 'POST'])
 def cardio_index():
     return render_template('cardio_index.html')
@@ -268,75 +319,59 @@ def log_cardio():
     user_id = "1"
 
     if request.method == 'POST':
-        if request.form.get('action') == 'add_log':
-            if 'session_date' not in session:
-                session_date = request.form.get('session_date')
-                session_notes = request.form.get('session_notes')
-                session['session_date'] = session_date
-                session['session_notes'] = session_notes
+        if request.form.get('action') == 'select_date':
+            session_date = request.form.get('session_date')
+            session_notes = request.form.get('session_notes')
+            session['session_date'] = session_date
+            session['session_notes'] = session_notes
+            session['date_selection'] = False
 
+        elif request.form.get('action') == 'add_log':
             cardio_type = request.form.get('cardio_type')
-            hours = request.form.get('hours')
-            minutes = request.form.get('minutes')
-            seconds = request.form.get('seconds')
-            duration = get_db_duration(hours, minutes, seconds)
+            if request.form.get('hours'): hours = int(request.form.get('hours'))
+            else: hours = 0
+            if request.form.get('minutes'): minutes = int(request.form.get('minutes'))
+            else: minutes = 0
+            if request.form.get('seconds'): seconds = int(request.form.get('seconds'))
+            else: seconds = 0
+            db_duration = get_db_duration(hours, minutes, seconds)
             distance = request.form.get('distance')
             distance_unit = request.form.get('distance_unit')
             intensity = request.form.get('intensity')
             
+            if distance and not distance_unit:
+                flash("Please select either miles or kilometers")
+                return redirect(url_for('log_cardio'))
+            elif distance_unit and not distance:
+                flash("Please enter distance")
+                return redirect(url_for('log_cardio'))
+
             if 'current_logs' not in session:
                 session['current_logs'] = []
 
             session['current_logs'].append({
                 'cardio_type': cardio_type,
-                'duration': duration,
+                'hours': hours,
+                'minutes': minutes,
+                'seconds': seconds,
+                'db_duration': db_duration,
                 'distance': distance,
                 'distance_unit': distance_unit,
                 'intensity': intensity
             })
+            session.modified = True
         
         elif request.form.get('action') == 'finish_session':
-            if 'session_date' not in session:
-                session_date = request.form.get('session_date')
-                session_notes = request.form.get('session_notes')
-                session['session_date'] = session_date
-                session['session_notes'] = session_notes
             if 'current_logs' not in session:
-                cardio_type = request.form.get('cardio_type')
-                hours = request.form.get('hours')
-                minutes = request.form.get('minutes')
-                seconds = request.form.get('seconds')
-                duration = get_db_duration(hours, minutes, seconds)
-                distance = request.form.get('distance')
-                distance_unit = request.form.get('distance_unit')
-                intensity = request.form.get('intensity')
-                
-                if 'current_logs' not in session:
-                    session['current_logs'] = []
-
-                session['current_logs'].append({
-                    'cardio_type': cardio_type,
-                    'duration': duration,
-                    'distance': distance,
-                    'distance_unit': distance_unit,
-                    'intensity': intensity
-                })
-
-                conn, c = establish_connection()
-                session_id = log_cardio_session(c, session['session_date'], session['session_notes'], user_id)
-                current_logs = session['current_logs']
-                for log in current_logs:
-                    log_cardio_log(c, session_id, log['cardio_type'], log['duration'], log['distance'], log['distance_unit'], log['intensity'])
-                close_connection(conn)
-                session.clear()
-                flash("Cardio Session Logged Successfully!")
+                flash("Please add at least one cardio log before finishing up the session")
                 return redirect(url_for('log_cardio'))
             else: 
                 conn, c = establish_connection()
                 session_id = log_cardio_session(c, session['session_date'], session['session_notes'], user_id)
                 current_logs = session['current_logs']
                 for log in current_logs:
-                    log_cardio_log(c, session_id, log['cardio_type'], log['duration'], log['distance'], log['distance_unit'], log['intensity'])
+                    print(log)
+                    log_cardio_log(c, session_id, log['cardio_type'], log['db_duration'], log['distance'], log['distance_unit'], log['intensity'])
                 close_connection(conn)
                 session.clear()
                 flash("Cardio Session Logged Successfully!")
@@ -346,7 +381,9 @@ def log_cardio():
             session.clear()
             return redirect(url_for('log_cardio'))
 
-    return render_template('log_cardio.html', cardio_types=cardio_types, current_logs = session.get('current_logs', []))
+    return render_template('log_cardio.html', cardio_types=cardio_types, 
+                           current_logs = session.get('current_logs', []),
+                           date_selection=session.setdefault('date_selection', True))
 
 # == VIEW CARDIO SESSION == 
 @app.route('/view_cardio_session', methods= ['GET', 'POST'])

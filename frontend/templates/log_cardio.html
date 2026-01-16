@@ -3,27 +3,44 @@
 {% block title %}Log Cardio{% endblock %}
 
 {% block cardio_content %}
+{% if date_selection %}
 <form action="/log_cardio" method="POST">
-    <label for="session_date">Session Date</label>
-    <input type="date" name="session_date" id="session_date" required>
-    <label for="session_notes">Session Notes (optional)</label>
-    <input type="text" name="session_notes" id="session_notes">
+    <h3>Select workout date and enter any notes for the session</h2>
+    <label for="session_date" class="date_and_notes">Session Date</label>
+    <input type="date" id="session_date" class="date_and_notes" name="session_date" value="{{ session.get('session_date', '') }}" required>
+    <label for="session_notes" class="date_and_notes">Session Notes (optional)</label>
+    <input type="text" id="session_notes" class="date_and_notes" name="session_notes" value="{{ session.get('session_notes', '') }}">
+    <br>
+    <button type="submit" name="action" value="select_date">Continue to Add Sets</button>
+</form>
+{% endif %}
 
+{% if not date_selection %}
+<form action="/log_cardio" method="POST">
     <!-- Cardio Logs -->
     <table>
         <tr>
             <th>Cardio Type</th>
             <th>Duration</th>
             <th>Distance</th>
-            <th>Intensity</th>
+            <th>Intensity (Scale 1-10)</th>
         </tr>
 
         {% for log in current_logs %}
         <tr>
             <td>{{ log.cardio_type}}</td>
-            <td>{{ log.duration }}</td>
+            {% if log.db_duration %}
+            <td>{{ log.hours }} hour(s) {{ log.minutes }} minute(s) {{ log.seconds }} second(s)</td>
+            {% else %}
+            <td>N/A</td>
+            {% endif %}
+            {% if log.distance %}
             <td>{{ log.distance }} {{ log.distance_unit}}</td>
+            {% else %}
+            <td>N/A</td>
+            {% endif %}
             <td>{{ log.intensity }}</td>
+            
         </tr>
         {% endfor %}
 
@@ -42,13 +59,35 @@
                 <input type="number" name="seconds" id="duration"  min="0" max="59" placeholder="Seconds">
             </td>
             <td>
-                <input type="number" name="distance" id="distance" step=".01">
+                <input type="number" name="distance" id="distance" step=".01" 
+                value="{% if current_logs %}{{ current_logs[-1].distance }}{% endif %}">
                 <select name="distance_unit" id="distance_unit">
-                    <option value="mi">Miles</option>
-                    <option value="km">Kilometers</option>
+                    <option value="" disabled selected>-- Select Unit --</option>
+                    <option value="mi"
+                        {% if current_logs and current_logs[-1].distance_unit == "mi" %}
+                            selected
+                        {% endif %}>
+                        Miles
+                    </option>
+                    <option value="km"
+                        {% if current_logs and current_logs[-1].distance_unit == "km" %}
+                            selected
+                        {% endif %}>
+                        Kilometers
+                    </option>
                 </select>
             </td>
-            <td><input type="range" name="intensity" id="intensity" min="1" max="10"></td>
+            <td>
+                <strong><span id="intensity-value">5</span></strong>
+                <input
+                    type="range"
+                    name="intensity"
+                    id="intensity"
+                    min="1"
+                    max="10"
+                    step="1"
+                    value="5">
+            </td>
         </tr>
     </table>
 
@@ -56,5 +95,20 @@
     <button type="submit" name="action" value="finish_session">Finish Session</button>
     <button type="submit" name="action" value="reset">Reset</button>
 </form>
-
+{% endif %}
 {% endblock %}
+
+{% block scripts %}
+<script>
+    const intensitySlider = document.getElementById("intensity");
+    const intensityValue = document.getElementById("intensity-value");
+
+    if (intensitySlider && intensityValue) {
+        intensityValue.textContent = intensitySlider.value;
+
+        intensitySlider.addEventListener("input", () => {
+            intensityValue.textContent = intensitySlider.value;
+        });
+    }
+</script>
+{% endblock%}

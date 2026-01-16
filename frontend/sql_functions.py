@@ -8,7 +8,6 @@ from datetime import datetime
 def establish_connection():
     conn = sqlite3.connect('../backend/exercises.db')
     conn.execute("PRAGMA foreign_keys = ON")
-    # conn.row_factory = sqlite3.Row
     c = conn.cursor()
     return conn, c
 
@@ -22,6 +21,16 @@ def get_exercise_id(c, exercise_name):
     c.execute("SELECT exercise_id FROM exercises WHERE exercise_name = ?", (exercise_name,))
     exercise_id = c.fetchone()[0]
     return exercise_id
+
+def get_custom_exercise_id(c, custom_exercise, user_id):
+    c.execute("SELECT id FROM custom_exercises WHERE exercise_name = ? AND user_id = ?", (custom_exercise, user_id))
+    exercise_id = c.fetchone()[0]
+    return exercise_id
+
+def get_session_ids(c, session_date, user_id):
+    c.execute("SELECT id FROM workout_sessions WHERE session_date = ? AND user_id = ?", (session_date, user_id))
+    session_ids = [id[0] for id in c.fetchall()]
+    return session_ids
 
 
 # == EDITS ==
@@ -52,10 +61,16 @@ def edit_custom_cardio(c, user_id, new_cardio, old_cardio):
 def display_exercises():
     conn, c = establish_connection()
     c.execute("SELECT exercise_id, exercise_name FROM exercises")
-    valid_exercises = sorted([row[1] for row in c.fetchall()])
+    exercises = sorted([row[1] for row in c.fetchall()])
     close_connection(conn)
+    return exercises
 
-    return valid_exercises
+def display_custom_exercises(user_id):
+    conn, c = establish_connection()
+    c.execute("SELECT id, exercise_name FROM custom_exercises WHERE user_id = ?", (user_id,))
+    exercises = sorted([row[1] for row in c.fetchall()])
+    close_connection(conn)
+    return exercises
 
 def display_exercises_by_muscle_group():
     conn, c = establish_connection()
@@ -73,22 +88,30 @@ def display_exercises_by_muscle_group():
 
 def display_workout(session_date, user_id):
     conn, c = establish_connection()
-    query = """
+    session_ids = get_session_ids(c, session_date, user_id)
+
+    placeholders = ','.join('?' * len(session_ids))
+
+    query = f"""
         SELECT workout_sessions.id, workout_sessions.session_date, workout_sessions.session_notes,
-        workout_logs.id, exercises.exercise_name, workout_logs.exercise_notes, 
+        workout_logs.id, COALESCE(exercises.exercise_name, custom_exercises.exercise_name) AS exercise_name, workout_logs.exercise_notes, 
         workout_sets.id, workout_sets.set_number, workout_sets.reps, workout_sets.weight 
         FROM workout_sessions  
         JOIN workout_logs ON workout_sessions.id = workout_logs.session_id  
-        JOIN exercises ON workout_logs.exercise_id = exercises.exercise_id  
+        LEFT JOIN exercises
+        ON workout_logs.exercise_id = exercises.exercise_id
+        LEFT JOIN custom_exercises
+        ON workout_logs.custom_exercise_id = custom_exercises.id
         JOIN workout_sets ON workout_logs.id = workout_sets.workout_log_id  
-        WHERE workout_sessions.session_date = ? AND workout_sessions.user_id = ?
-        ORDER BY workout_logs.id, workout_sets.set_number;
+        WHERE workout_sessions.id IN ({placeholders})
+        ORDER BY workout_sessions.id, workout_logs.id, workout_sets.set_number;
         """
     
-    c.execute(query,(session_date, user_id))
+    c.execute(query, session_ids)
     workouts = c.fetchall()
     close_connection(conn)
     return workouts
+
 
 def view_custom_exercises(user_id):
     conn, c = establish_connection()
@@ -146,11 +169,11 @@ def insert_session(session_date, session_notes, user_id):
     close_connection(conn)
     return session_id
 
-def insert_workout_log(c, session_id, exercise_id, exercise_notes):
+def insert_workout_log(c, session_id, exercise_id, custom_exercise_id, exercise_notes):
     c.execute("""
-                INSERT INTO workout_logs (session_id, exercise_id, exercise_notes)
-                VALUES (?, ?, ?)
-            """, (session_id, exercise_id, exercise_notes))
+                INSERT INTO workout_logs (session_id, exercise_id, custom_exercise_id, exercise_notes)
+                VALUES (?, ?, ?, ?)
+            """, (session_id, exercise_id, custom_exercise_id, exercise_notes if exercise_notes else None))
     workout_log_id = c.lastrowid
     return workout_log_id
 
@@ -168,14 +191,14 @@ def get_db_duration(hours, minutes, seconds):
 
 def log_cardio_session(c, session_date, notes, user_id):
     c.execute("""
-        INSERT INTO cardio_sessions (session_date, session_notes, cardio_type_id, user_id)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO cardio_sessions (session_date, session_notes, user_id)
+        VALUES (?, ?, ?)
     """, (session_date, notes if notes else None, user_id))
     session_id = c.lastrowid
     return session_id
 
 def log_cardio_log(c, cardio_session_id, cardio_type, duration, distance, distance_unit, intensity):
-    c.execute("SELECT cario_type_id FROM cardio_types WHERE cardio_type = ?", (cardio_type,))
+    c.execute("SELECT cardio_type_id FROM cardio_types WHERE cardio_type_name = ?", (cardio_type,))
     cardio_type_id = c.fetchone()[0]
     c.execute("""
         INSERT INTO cardio_logs (cardio_session_id, cardio_type_id, duration, distance, distance_unit, intensity)
