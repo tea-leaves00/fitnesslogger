@@ -10,22 +10,34 @@
 </form>
 
 {% if workouts %}
-    {% for session_id, session_date, session_notes, workout_log_id, exercise_name, exercise_notes, set_id, set_number, reps, weight in workouts %}
+    {% for session_id, session_date, session_notes, 
+        workout_log_id, exercise_name, exercise_notes, 
+        set_id, set_number, reps, weight in workouts %}
+
         {% if loop.first %}
-            <p>{{ session_date }}</p>
-            <p>{{ session_notes }}</p>
+            <strong><p>{{ session_date }}</p></strong>
+            <p>Session Notes: {{ session_notes }}</p>
+            <p>-----------------</p>
         {% endif %}
+
+        {% if loop.previtem and loop.previtem[0] != session_id %}
+            <p>-------------------------------</p>
+        {% endif%}
+
 
         {% if loop.first or (loop.previtem and loop.previtem[4] != exercise_name) %}
             <p>Exercise: {{ exercise_name }}</p>
             <p>Exercise Notes: {{ exercise_notes }}</p>
         {% endif %}
 
+    
         {% if weight is none %}
             <p>Set {{ set_number }}: {{ reps }} reps, Bodyweight</p>
         {% else %}
             <p>Set {{ set_number }}: {{ reps }} reps, {{ weight }} lbs</p>
         {% endif %}
+
+        
 
         
     {% endfor %}

@@ -1,0 +1,38 @@
+{% extends "base_cardio.html" %}
+
+{% block title %}View Cardio Session - Workout App{% endblock %}
+
+{% block cardio_content %}
+
+<form method="POST">
+    <input type="date" name="session_date" value="{{ session.get('session_date', '') }}">
+    <button type="submit" name="action" value="view">View Session</button>
+</form>
+
+{% if cardio_session %}
+    {% for session_id, session_date, session_notes, log_id, duration, distance, distance_unit, intensity, cardio_type in cardio_session %}
+        {% if loop.first %}
+            <p>{{ session_date }}</p>
+            <p>{{ session_notes }}</p>
+        {% endif %}
+
+        {% if loop.first or (loop.previtem and loop.previtem[8] != cardio_type) %}
+            <p>{{ cardio_type }}</p>
+        {% endif %}
+
+        <p>Duration: {{ duration }} </p>
+        <p>Distance: {{ distance }} {{ distance_unit}}</p>
+        <p>Intensity (scale 1-10): {{ intensity }}</p>
+
+        
+    {% endfor %}
+    <a href="{{ url_for('edit_cardio_session', session_date=cardio_session[0][1]) }}">Edit Session</a>
+
+{% elif cardio_searched %}
+    <p>No session found</p>
+
+{%  endif %}
+
+
+
+{% endblock %}

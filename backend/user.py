@@ -207,14 +207,6 @@ def log_cardio_session(user_id):
 
     cardio_log_id = log_cardio_log(c, session_id, db_duration, distance, intensity, distance_unit)
 
-
-
-
-
-
-
-
-
 def create_custom_cardio(user_id):
     db_path = resource_path("exercises.db")
     conn = sqlite3.connect(db_path)
@@ -238,6 +230,8 @@ def create_custom_cardio(user_id):
 
     conn.commit()
     conn.close()
+
+
 
 def run_cli():
     db_path = resource_path("exercises.db")
