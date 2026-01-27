@@ -12,7 +12,7 @@
 {% if workouts %}
     {% for session_id, session_date, session_notes, 
         workout_log_id, exercise_name, exercise_notes, 
-        set_id, set_number, reps, weight in workouts %}
+        set_id, set_number, reps, weight, is_time_based in workouts %}
 
         {% if loop.first %}
             <strong><p>{{ session_date }}</p></strong>
@@ -30,24 +30,21 @@
             <p>Exercise Notes: {{ exercise_notes }}</p>
         {% endif %}
 
-    
-        {% if weight is none %}
-            <p>Set {{ set_number }}: {{ reps }} reps, Bodyweight</p>
+        {% if is_time_based %}
+            {% set minutes = reps // 60 %}
+            {% set seconds = reps % 60 %}
+            <p>Set {{ set_number }}: {{ minutes }}:{{ '%02d' | format(seconds) }}{% if weight %}, {{ weight }} lbs{% endif %}</p>
         {% else %}
-            <p>Set {{ set_number }}: {{ reps }} reps, {{ weight }} lbs</p>
+            {% if weight is none %}
+                <p>Set {{ set_number }}: {{ reps }} reps, Bodyweight</p>
+            {% else %}
+                <p>Set {{ set_number }}: {{ reps }} reps, {{ weight }} lbs</p>
         {% endif %}
 
-        
-
-        
     {% endfor %}
     <a href="{{ url_for('edit_workout', session_date=workouts[0][1]) }}">Edit Workout</a>
 
 {% elif workout_searched %}
     <p>No workouts found</p>
-
-{%  endif %}
-
-
-
+{% endif %}
 {% endblock %}

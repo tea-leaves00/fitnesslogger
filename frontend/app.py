@@ -1,19 +1,100 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
-# from flask_login import LoginManager, UserMixin
-# from werkzeug.security import generate_password_hash, check_password_hash
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from werkzeug.security import generate_password_hash, check_password_hash
+from user_class import User
 import sqlite3
 from sql_functions import *
 
 
 app = Flask(__name__)
-app.secret_key = 'something'
-# login_manager = LoginManager()
-# login_manager.init_app(app)
-# login_manager.login_view = 'login' 
+app.config.from_pyfile('config.py')
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login' 
+
+# == LIMITER ==
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"]
+)
+
+# == LOGIN ==
+@login_manager.user_loader
+def load_user(user_id):
+    data = get_user_by_id(int(user_id))
+
+    if not data:
+        return None
+    
+    user = User(id=data[0], first_name=data[1], last_name=data[2], username=data[3], email=data[4])
+    return user
+
+@app.route("/settings")
+@login_required
+def settings():
+    pass
+
+# regex for email verification??
+# strong password requirement
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        first_name = request.form.get('first_name')
+        last_name = request.form.get('last_name')
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        password_hash = generate_password_hash(password)
+
+        if create_user(first_name, last_name, username, password_hash, email):
+            flash("Registration successful! Please log in.")
+            return redirect(url_for('login'))
+        else:
+            flash("Username or email already exists.")
+            return redirect(url_for('register'))
+    
+    return render_template('register.html')
+    
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        data = get_user_by_username(username)
+        
+        if not data:
+            flash("Incorrect username or password")
+            return redirect(url_for('login'))
+        
+        password_hash = data[5]
+        if check_password_hash(password_hash, password):
+            user = User(id=data[0], first_name=data[1], last_name=data[2], 
+            username=data[3], email=data[4])
+            login_user(user)
+            return redirect(url_for('index'))
+        else:
+            flash("Incorrect username or password. Please try again")
+            return redirect(url_for('login'))
+
+    return render_template('login.html')
+
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    session.clear()
+    flash("See ya next time!")
+    return redirect(url_for('login'))
 
 
 # == MAIN PAGE ==
 @app.route('/')
+@login_required
 def index():
     return render_template('base.html')
 
@@ -21,6 +102,7 @@ def index():
 # === WEIGHTLIFTING ===
 # == HOME ==
 @app.route('/weightlifting_home')
+@login_required
 def weightlifting_index():
     return render_template('weightlifting_index.html')
 
@@ -29,16 +111,19 @@ def weightlifting_index():
 # little trash can icons next to each set
 # form resubmission fucks things up (for example it input a duplicate entry and then upon viewing the workout it say set 1 1 2 2)
 # same_sets button resets everything cuz it redirects
-# reset should not pop everything...like it shouldnt go all the way back to date selection....idk maybe it should???
 # error handling for not entering sets
 # if you do finish workout before adding last set, handle that maybe
 #do same thing as log cardio where it will input the first set if not added log, OR even better error handling
+# any other places I need to add session.modified?
 
 @app.route('/log_workout', methods=['POST', 'GET'])
+@login_required
 def log_workout():
-    user_id = "1"
+    user_id = current_user.id
     exercises = display_exercises()
     custom_exercises = display_custom_exercises(user_id)
+    time_based_exercises = get_time_based_exercises()
+    time_based_custom_exercises = get_time_based_custom_exercises(user_id)
 
     if request.method == 'POST':
         if request.form.get('action') == 'select_date':
@@ -47,7 +132,6 @@ def log_workout():
             session['session_date'] = session_date
             session['session_notes'] = session_notes
             session['date_selection'] = False
-            print(session_notes)
 
         elif request.form.get('action') == 'same_sets':
             session['same_sets'] = True
@@ -72,6 +156,7 @@ def log_workout():
                 return redirect(url_for('log_workout'))
 
             selected_exercise = exercise_name if exercise_name else custom_exercise
+        
             reps = int(request.form.get('reps'))
             bodyweight = request.form.get('bodyweight')
             weight = (request.form.get('weight'))
@@ -124,12 +209,15 @@ def log_workout():
             session.modified = True
 
         elif request.form.get('action') == 'reset':
-            session.clear()
+            clear_sets()
             return redirect(url_for('log_workout'))
         
         elif request.form.get('action') == 'finish_workout':
+            if 'current_sets' not in session:
+                flash("Please enter at least one set")
+                return redirect(url_for('log_workout'))
             if 'current_workout_id' not in session:
-                user_id = "1"
+                user_id = current_user.id
                 session_id = insert_session(session['session_date'], session['session_notes'], user_id)
                 session['current_workout_id'] = session_id
             
@@ -157,7 +245,7 @@ def log_workout():
             finally:
                 close_connection(conn)
 
-            session.clear()
+            clear_workout_session()
             flash("Workout Logged Successfully!")
             return redirect(url_for('log_workout'))
 
@@ -166,15 +254,18 @@ def log_workout():
                         custom_exercises=custom_exercises,
                         current_sets = session.get('current_sets', []), 
                         date_selection=session.setdefault('date_selection', True),
-                        same_sets=session.setdefault('same_sets', False))
+                        same_sets=session.setdefault('same_sets', False),
+                        time_based_exercises=time_based_exercises,
+                        time_based_custom_exercises=time_based_custom_exercises)
 
 # == VIEW WORKOUT ==
 @app.route('/view_workout', methods= ['GET', 'POST'])
+@login_required
 def view_workout():
     if request.method == 'POST':
         session_date = request.form.get('session_date')
         session['session_date'] = session_date
-        user_id = "1"
+        user_id = current_user.id
 
         workouts = display_workout(session_date, user_id)
         
@@ -192,8 +283,9 @@ def view_workout():
 
 # == EDIT WORKOUT == 
 @app.route('/edit_workout/<session_date>', methods=['GET', 'POST'])
+@login_required
 def edit_workout(session_date):
-    user_id = "1"
+    user_id = current_user.id
     workouts = session.get('current_workout', [])
     
 
@@ -274,10 +366,11 @@ def edit_workout(session_date):
 
 # == CUSTOM EXERCISES ==
 @app.route('/custom_exercises', methods=['GET', 'POST'])
+@login_required
 def custom_exercises():
     custom_exercises = []
     editing_exercise = False
-    user_id = "1"
+    user_id = current_user.id
 
     if request.method == 'POST':
         if request.form.get('action') == 'add_exercise':
@@ -308,15 +401,17 @@ def custom_exercises():
 # === CARDIO ===
 # == HOME ==
 @app.route('/cardio_home', methods=['GET', 'POST'])
+@login_required
 def cardio_index():
     return render_template('cardio_index.html')
 
 
 # == LOG CARDIO ==
 @app.route('/log_cardio', methods=['GET', 'POST'])
+@login_required
 def log_cardio():
     cardio_types = display_cardio_types()
-    user_id = "1"
+    user_id = current_user.id
 
     if request.method == 'POST':
         if request.form.get('action') == 'select_date':
@@ -344,6 +439,10 @@ def log_cardio():
                 return redirect(url_for('log_cardio'))
             elif distance_unit and not distance:
                 flash("Please enter distance")
+                return redirect(url_for('log_cardio'))
+            
+            if not distance and not db_duration:
+                flash("Please enter either distance or duration")
                 return redirect(url_for('log_cardio'))
 
             if 'current_logs' not in session:
@@ -373,12 +472,12 @@ def log_cardio():
                     print(log)
                     log_cardio_log(c, session_id, log['cardio_type'], log['db_duration'], log['distance'], log['distance_unit'], log['intensity'])
                 close_connection(conn)
-                session.clear()
+                clear_cardio_session()
                 flash("Cardio Session Logged Successfully!")
                 return redirect(url_for('log_cardio'))
 
         elif request.form.get('action') == 'reset':
-            session.clear()
+            clear_logs()
             return redirect(url_for('log_cardio'))
 
     return render_template('log_cardio.html', cardio_types=cardio_types, 
@@ -387,10 +486,11 @@ def log_cardio():
 
 # == VIEW CARDIO SESSION == 
 @app.route('/view_cardio_session', methods= ['GET', 'POST'])
+@login_required
 def view_cardio_session():
     if request.method == 'POST':
         session_date = request.form.get('session_date')
-        user_id = "1"
+        user_id = current_user.id
 
         cardio_session = display_cardio_session(session_date, user_id)
         
@@ -407,8 +507,9 @@ def view_cardio_session():
 
 # == EDIT CARDIO SESSION == 
 @app.route('/edit_cardio_session/<session_date>', methods=['GET', 'POST'])
+@login_required
 def edit_cardio_session(session_date):
-    user_id = "1"
+    user_id = current_user.id
     cardio_session = session.get('current_session', [])
 
     if request.method == 'POST':
@@ -473,10 +574,11 @@ def edit_cardio_session(session_date):
 
 # == CUSTOM CARDIO ==
 @app.route('/custom_cardio', methods=['GET', 'POST'])
+@login_required
 def custom_cardio():
     custom_cardio = []
     editing_cardio = False
-    user_id = "1"
+    user_id = current_user.id
 
     if request.method == 'POST':
         if request.form.get('action') == 'add_cardio':

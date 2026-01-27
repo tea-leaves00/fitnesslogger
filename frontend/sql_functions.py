@@ -1,8 +1,5 @@
 import sqlite3
-import os
-import sys
-import time
-from datetime import datetime
+from flask import session
 
 # == CONNECT AND CLOSE ==
 def establish_connection():
@@ -15,6 +12,32 @@ def close_connection(conn):
     conn.commit()
     conn.close()
 
+# == USERS == 
+def create_user(first_name, last_name, username, password_hash, email):
+    try:
+        conn, c = establish_connection()
+        c.execute("INSERT into users (first_name, last_name, username, password, email) VALUES (?, ?, ?, ?, ?)"
+                    ,(first_name, last_name, username, password_hash, email))
+        conn.commit()
+        close_connection(conn)
+        return True
+    except sqlite3.IntegrityError:
+        close_connection(conn)
+        return False
+    
+def get_user_by_id(user_id):
+    conn, c = establish_connection()
+    c.execute("SELECT id, first_name, last_name, username, email FROM users WHERE id = ?", (user_id,))
+    data = c.fetchone()
+    close_connection(conn)
+    return data
+
+def get_user_by_username(username):
+    conn, c = establish_connection()
+    c.execute("SELECT id, first_name, last_name, username, email, password FROM users WHERE username = ?", (username,))
+    data = c.fetchone()
+    close_connection(conn)
+    return data
 
 # == SELECT ==
 def get_exercise_id(c, exercise_name):
@@ -32,6 +55,35 @@ def get_session_ids(c, session_date, user_id):
     session_ids = [id[0] for id in c.fetchall()]
     return session_ids
 
+def check_is_time_based(exercises, exercise_name, user_id):
+    conn, c = establish_connection()
+    if exercise_name in exercises:
+        c.execute("SELECT is_time_based FROM exercises WHERE exercise_name = ?", exercise_name)
+    else:
+        c.execute("SELECT is_time_based FROM custom_exercises WHERE exercise_name = ? and user_id = ?", (exercise_name, user_id))
+    result = c.fetchone()[0]
+    close_connection(conn)
+
+    if result == 0:
+        return False
+    else:
+        return True
+
+def get_time_based_exercises():
+    conn, c = establish_connection()
+    try:
+        result = c.execute("SELECT exercise_name FROM exercises WHERE is_time_based = 1").fetchall()
+        return [row[0] for row in result]
+    finally:
+        close_connection(conn)
+
+def get_time_based_custom_exercises(user_id):
+    conn, c = establish_connection()
+    try:
+        result = c.execute("SELECT exercise_name FROM custom_exercises WHERE user_id = ? AND is_time_based = 1", (user_id,)).fetchall()
+        return [row[0] for row in result]
+    finally:
+        close_connection(conn)
 
 # == EDITS ==
 def edit_session_notes(c, workout_date,user_id):
@@ -89,19 +141,18 @@ def display_exercises_by_muscle_group():
 def display_workout(session_date, user_id):
     conn, c = establish_connection()
     session_ids = get_session_ids(c, session_date, user_id)
-
     placeholders = ','.join('?' * len(session_ids))
 
     query = f"""
         SELECT workout_sessions.id, workout_sessions.session_date, workout_sessions.session_notes,
-        workout_logs.id, COALESCE(exercises.exercise_name, custom_exercises.exercise_name) AS exercise_name, workout_logs.exercise_notes, 
-        workout_sets.id, workout_sets.set_number, workout_sets.reps, workout_sets.weight 
+        workout_logs.id, COALESCE(exercises.exercise_name, custom_exercises.exercise_name) AS exercise_name, 
+        workout_logs.exercise_notes, 
+        workout_sets.id, workout_sets.set_number, workout_sets.reps, workout_sets.weight,
+        COALESCE(exercises.is_time_based, custom_exercises.is_time_based, 0) AS is_time_based
         FROM workout_sessions  
         JOIN workout_logs ON workout_sessions.id = workout_logs.session_id  
-        LEFT JOIN exercises
-        ON workout_logs.exercise_id = exercises.exercise_id
-        LEFT JOIN custom_exercises
-        ON workout_logs.custom_exercise_id = custom_exercises.id
+        LEFT JOIN exercises ON workout_logs.exercise_id = exercises.exercise_id
+        LEFT JOIN custom_exercises ON workout_logs.custom_exercise_id = custom_exercises.id
         JOIN workout_sets ON workout_logs.id = workout_sets.workout_log_id  
         WHERE workout_sessions.id IN ({placeholders})
         ORDER BY workout_sessions.id, workout_logs.id, workout_sets.set_number;
@@ -215,10 +266,38 @@ def display_cardio_types():
     return cardio_types
 
 
-    
+# == CLEAR SESSION ==
+def clear_workout_session():
+    keys = [
+        'current_sets', 'session_date', 'session_notes', 
+        'date_selection', 'same_sets', 'current_set_number',
+        'current_exercise', 'current_workout_id'
+    ]
+    for key in keys:
+        session.pop(key, None)
 
+def clear_sets():
+    keys = [
+        'current_sets', 'same_sets', 'current_set_number',
+        'current_exercise', 'current_workout_id'
+    ]
+    for key in keys:
+        session.pop(key, None)
 
+def clear_cardio_session():
+    keys = [
+        'current_logs', 'session_date', 
+        'session_notes', 'date_selection',
+    ]
+    for key in keys:
+        session.pop(key, None)
 
+def clear_logs():
+    keys = [
+        'current_logs'
+    ]
+    for key in keys:
+        session.pop(key, None)
 
     
     

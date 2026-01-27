@@ -59,7 +59,7 @@
             <td>
                 <p>Exercises</p>
             <select name="exercise" id="exercise-select">
-                <option value="" diabled selected>-- Select Exercise --</option>
+                <option value="" selected>-- Select Exercise --</option>
                 {% for exercise in exercises %}
                 <option value="{{ exercise }}" 
                     {% if current_sets and current_sets[-1].exercise == exercise %}selected{% endif %}>
@@ -70,7 +70,7 @@
             {% if custom_exercises %}
             <p>Custom Exercises</p>
             <select name="custom_exercise" id="custom-exercise-select">
-                <option value="" disabled selected>-- Select Custom Exercise --</option>
+                <option value="" selected>-- Select Custom Exercise --</option>
                 {% for custom_exercise in custom_exercises %}
                 <option value="{{custom_exercise}}">
                     {{custom_exercise}}
@@ -89,7 +89,11 @@
                 <button type="submit" name="action" value="same_sets">Are all sets the same for this exercise?</button>
             {% endif %}
             </td>
-            <td><input type="number" name="reps" {% if current_sets %}value="{{ current_sets[-1].reps }}"{% endif %}></td>
+            <td>
+                <label id="reps-label">Reps</label>
+                <input type="number" name="reps" id="reps-input" 
+                    {% if current_sets %}value="{{ current_sets[-1].reps }}"{% endif %}>
+            </td>
             <td><input type="number" step="0.5" min=0 name="weight" {% if current_sets %}value="{{ current_sets[-1].weight }}"{% endif %}>
                 <input type="checkbox" name="bodyweight" value="bodyweight">Bodyweight
             </td> 
@@ -99,6 +103,7 @@
 
     <button type="submit" name="action" value="add_set">Add Set</button>    
     <button type="submit" name="action" value="reset">Reset</button>
+    <br>
     <button type="submit" name="action" value="finish_workout">Finish Workout</button>
 </form>
 {% endif %}
@@ -112,18 +117,53 @@
 document.addEventListener('DOMContentLoaded', function() {
     const exerciseSelect = document.querySelector('#exercise-select');
     const customExerciseSelect = document.querySelector('#custom-exercise-select');
+    const repsLabel = document.querySelector('#reps-label');
+    const timeBasedExercises = {{ time_based_exercises | tojson }};
+    const timeBasedCustom = {{ time_based_custom_exercises | tojson }};
 
+    let exerciseChoices, customExerciseChoices;
+    
     if (exerciseSelect) {
-        new Choices(exerciseSelect, {
+        exerciseChoices = new Choices(exerciseSelect, {
             searchEnabled: true,
             itemSelectText: '',
         });
     }
 
     if (customExerciseSelect) {
-        new Choices(customExerciseSelect, {
+        customExerciseChoices = new Choices(customExerciseSelect, {
             searchEnabled: true,
             itemSelectText: '',
+        });
+    }
+
+    function updateRepsLabel(exerciseName) {
+        if (timeBasedExercises.includes(exerciseName) || timeBasedCustom.includes(exerciseName)) {
+            repsLabel.textContent = 'Seconds';
+        } else {
+            repsLabel.textContent = 'Reps';
+        }
+    }
+
+    if (exerciseSelect) {
+        exerciseSelect.addEventListener('change', function() {
+            if (this.value !== '') {
+                if (customExerciseChoices) {
+                    customExerciseChoices.setChoiceByValue('');
+                }
+                updateRepsLabel(this.value); 
+            }
+        });
+    }
+
+    if (customExerciseSelect) {
+        customExerciseSelect.addEventListener('change', function() {
+            if (this.value !== '') {
+                if (exerciseChoices) {
+                    exerciseChoices.setChoiceByValue('');
+                }
+                updateRepsLabel(this.value);  
+            }
         });
     }
 });
