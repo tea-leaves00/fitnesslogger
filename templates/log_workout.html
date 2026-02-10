@@ -57,7 +57,7 @@
         <!-- User Input -->
         <tr>
             <td>
-                <p>Exercises</p>
+            <p>Exercises</p>
             <select name="exercise" id="exercise-select">
                 <option value="" selected>-- Select Exercise --</option>
                 {% for exercise in exercises %}
@@ -82,12 +82,13 @@
 
             <td><input type="text" name="exercise_notes"></td>
             <td>
-            {% if session.get('same_sets') %}
-                <input type="number" name="sets" min="1"> Sets
-            {% else %}
-                Set No. {{ session.get('current_set_number', '1') }}
-                <button type="submit" name="action" value="same_sets">Are all sets the same for this exercise?</button>
-            {% endif %}
+                <span id="set-number-display">
+                    <strong>Set No. {{ session.get('current_set_number', '1') }}</strong>
+                </span>
+                <br><br>
+                <input type="checkbox" id="same-sets-checkbox"> 
+                <label for="same-sets-checkbox">All sets the same?</label>
+                <input type="number" name="sets" id="sets-input" min="1" style="display: none;">
             </td>
             <td>
                 <label id="reps-label">Reps</label>
@@ -101,6 +102,7 @@
 
     </table>
 
+    <button type="submit" name="action" value="back">Back to Date Selection</button>
     <button type="submit" name="action" value="add_set">Add Set</button>    
     <button type="submit" name="action" value="reset">Reset</button>
     <br>
@@ -120,6 +122,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const repsLabel = document.querySelector('#reps-label');
     const timeBasedExercises = {{ time_based_exercises | tojson }};
     const timeBasedCustom = {{ time_based_custom_exercises | tojson }};
+
+    // Same sets toggle elements
+    const sameSetsCheckbox = document.getElementById('same-sets-checkbox');
+    const setNumberDisplay = document.getElementById('set-number-display');
+    const setsInput = document.getElementById('sets-input');
 
     let exerciseChoices, customExerciseChoices;
     
@@ -163,6 +170,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     exerciseChoices.setChoiceByValue('');
                 }
                 updateRepsLabel(this.value);  
+            }
+        });
+    }
+
+    // Toggle between individual sets and bulk entry
+    if (sameSetsCheckbox) {
+        sameSetsCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                // Show bulk entry mode
+                setNumberDisplay.style.display = 'none';
+                setsInput.style.display = 'inline';
+            } else {
+                // Show individual set mode
+                setNumberDisplay.style.display = 'inline';
+                setsInput.style.display = 'none';
             }
         });
     }

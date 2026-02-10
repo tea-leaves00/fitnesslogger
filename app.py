@@ -4,8 +4,8 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.security import generate_password_hash, check_password_hash
 from user_class import User
-import sqlite3
 from sql_functions import *
+
 
 
 app = Flask(__name__)
@@ -20,6 +20,15 @@ limiter = Limiter(
     key_func=get_remote_address,
     default_limits=["200 per day", "50 per hour"]
 )
+
+# == HTTP ==
+@app.after_request
+def add_cache_headers(response):
+    if response.content_type and response.content_type.startswith('text/html'):
+        response.headers['Cache-Control'] = 'no-store, private'
+        response.headers['Pragma'] = 'no-cache'
+    
+    return response
 
 # == LOGIN ==
 @login_manager.user_loader
@@ -96,7 +105,7 @@ def logout():
 @app.route('/')
 @login_required
 def index():
-    return render_template('base.html')
+    return render_template('landing.html')
 
 
 # === WEIGHTLIFTING ===
@@ -107,23 +116,26 @@ def weightlifting_index():
     return render_template('weightlifting_index.html')
 
 # == LOG WORKOUT ==
-# ok this is working way better but now need to figure out what happens when someone goes BACK
 # little trash can icons next to each set
-# form resubmission fucks things up (for example it input a duplicate entry and then upon viewing the workout it say set 1 1 2 2)
-# same_sets button resets everything cuz it redirects
-# error handling for not entering sets
-# if you do finish workout before adding last set, handle that maybe
-#do same thing as log cardio where it will input the first set if not added log, OR even better error handling
 # any other places I need to add session.modified?
 
 @app.route('/log_workout', methods=['POST', 'GET'])
 @login_required
 def log_workout():
     user_id = current_user.id
-    exercises = display_exercises()
-    custom_exercises = display_custom_exercises(user_id)
-    time_based_exercises = get_time_based_exercises()
-    time_based_custom_exercises = get_time_based_custom_exercises(user_id)
+    
+    keys = ['exercises', 'custom_exercises', 'time_based_exercises', 'time_based_custom_exercises']
+
+    if any(key not in session for key in keys):
+        conn, c = establish_connection()
+        data = {
+            'exercises': display_exercises(c),
+            'custom_exercises': display_custom_exercises(c, user_id),
+            'time_based_exercises': get_time_based_exercises(c),
+            'time_based_custom_exercises': get_time_based_custom_exercises(c, user_id)
+            }
+        close_connection(conn)
+        session.update(data)
 
     if request.method == 'POST':
         if request.form.get('action') == 'select_date':
@@ -132,10 +144,6 @@ def log_workout():
             session['session_date'] = session_date
             session['session_notes'] = session_notes
             session['date_selection'] = False
-
-        elif request.form.get('action') == 'same_sets':
-            session['same_sets'] = True
-            session.modified = True
 
         elif request.form.get('action') == 'add_set':
             exercise_name = request.form.get('exercise')
@@ -170,11 +178,10 @@ def log_workout():
 
             if 'current_sets' not in session:
                 session['current_sets'] = []
+
+            sets_input = request.form.get('sets')
                 
-            if session.get('same_sets'):
-                if not request.form.get('sets'):
-                    flash('Enter Number of Sets')
-                    return redirect(url_for('log_workout'))
+            if sets_input:
                 sets = int(request.form.get('sets'))
                 session['current_sets'].append({
                     'same_sets': True,
@@ -185,8 +192,6 @@ def log_workout():
                     'weight': weight,
                 })
                 session['same_sets'] = False
-                print(session['current_sets'])
-
             else: 
                 if 'current_set_number' not in session:
                     session['current_set_number'] = 1
@@ -212,6 +217,10 @@ def log_workout():
             clear_sets()
             return redirect(url_for('log_workout'))
         
+        elif request.form.get('action') == 'back':
+            clear_workout_session()
+            return redirect(url_for('log_workout'))
+        
         elif request.form.get('action') == 'finish_workout':
             if 'current_sets' not in session:
                 flash("Please enter at least one set")
@@ -227,7 +236,7 @@ def log_workout():
                 for set_data in session['current_sets']:
                     # Only create workout_logs entry once per exercise
                     if set_data['exercise'] not in exercises_processed:
-                        if set_data['exercise'] in custom_exercises:
+                        if set_data['exercise'] in session['custom_exercises']:
                             exercise_id = None
                             custom_exercise_id = get_custom_exercise_id(c, set_data['exercise'], user_id)
                         else:
@@ -250,13 +259,12 @@ def log_workout():
             return redirect(url_for('log_workout'))
 
             
-    return render_template('log_workout.html', exercises=exercises, 
-                        custom_exercises=custom_exercises,
+    return render_template('log_workout.html', exercises=session.get('exercises', []), 
+                        custom_exercises=session.get('custom_exercises', []),
                         current_sets = session.get('current_sets', []), 
                         date_selection=session.setdefault('date_selection', True),
-                        same_sets=session.setdefault('same_sets', False),
-                        time_based_exercises=time_based_exercises,
-                        time_based_custom_exercises=time_based_custom_exercises)
+                        time_based_exercises=session.get('time_based_exercises', []),
+                        time_based_custom_exercises=session.get('time_based_exercises', []))
 
 # == VIEW WORKOUT ==
 @app.route('/view_workout', methods= ['GET', 'POST'])
@@ -268,6 +276,7 @@ def view_workout():
         user_id = current_user.id
 
         workouts = display_workout(session_date, user_id)
+    
         
         session['current_workout'] = workouts
         session['workout_searched'] = True
@@ -469,7 +478,6 @@ def log_cardio():
                 session_id = log_cardio_session(c, session['session_date'], session['session_notes'], user_id)
                 current_logs = session['current_logs']
                 for log in current_logs:
-                    print(log)
                     log_cardio_log(c, session_id, log['cardio_type'], log['db_duration'], log['distance'], log['distance_unit'], log['intensity'])
                 close_connection(conn)
                 clear_cardio_session()

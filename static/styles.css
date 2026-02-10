@@ -1,0 +1,839 @@
+/* ===================================
+   Variables for consistency
+   =================================== */
+:root {
+    --primary-color: #080842;
+    --hover-color: #0a0a5a;
+    --accent-color: #ffcc00;
+    --light-bg: #f8f8ff;
+    --border-color: #ddd;
+    --text-muted: #666;
+    --success-color: #28a745;
+    --error-color: #dc3545;
+}
+
+/* ===================================
+   Base Reset & Typography
+   =================================== */
+* {
+    font-family: Arial, sans-serif;
+    box-sizing: border-box;
+}
+
+h1, h2, h3, p {
+    text-align: center;
+    color: var(--primary-color);
+}
+
+h1, h2, h3 {
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+h1 {
+    font-size: 2.5rem;
+    letter-spacing: 3px;
+    margin-bottom: 1rem;
+}
+
+h2 {
+    font-size: 2rem;
+    margin-bottom: 0.75rem;
+}
+
+h3 {
+    font-size: 1.5rem;
+    letter-spacing: 1px;
+    margin-bottom: 0.5rem;
+}
+
+p {
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+strong {
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+/* ===================================
+   Layout
+   =================================== */
+html, body {
+    height: 100%;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    background-image: radial-gradient(#fff, #f0f0fc, #E6E6FA);
+}
+
+main {
+    flex: 1;
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* ===================================
+   Landing Page - Split Panels
+   =================================== */
+.landing-page {
+    background: var(--primary-color);
+}
+
+.landing-header {
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 20px;
+    z-index: 10;
+}
+
+.landing-header .logout-btn {
+    background-color: transparent;
+    border: 2px solid white;
+    color: white;
+    padding: 8px 20px;
+    font-size: 0.9rem;
+}
+
+.landing-header .logout-btn:hover {
+    background-color: white;
+    color: var(--primary-color);
+}
+
+.landing-main {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    max-width: none;
+}
+
+.panel-container {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    min-height: calc(100vh - 60px);
+}
+
+.panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: #E6E6FA;
+    transition: all 0.3s ease;
+    padding: 40px;
+    margin: 0;
+    border-radius: 0;
+}
+
+.panel-weightlifting {
+    background: linear-gradient(135deg, #080842 0%, #1a1a6e 100%);
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.panel-cardio {
+    background: linear-gradient(135deg, #1a1a6e 0%, #080842 100%);
+}
+
+.panel:hover {
+    flex: 1.1;
+    background: var(--hover-color);
+}
+
+.panel:hover .panel-title,
+.panel:hover .panel-subtitle {
+    color: var(--accent-color);
+}
+
+.panel-title {
+    font-size: 3rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    margin-bottom: 15px;
+    color: #f0f0fc;
+    transition: color 0.3s ease;
+}
+
+.panel-subtitle {
+    font-size: 1.2rem;
+    letter-spacing: 1px;
+    color: #E6E6FA;
+    transition: color 0.3s ease;
+}
+
+/* ===================================
+   Section Header (inside weightlifting/cardio)
+   =================================== */
+.section-header {
+    background-color: var(--primary-color);
+    padding: 10px 20px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.switch-btn {
+    background-color: transparent;
+    border: 1px solid white;
+    color: white;
+    padding: 6px 15px;
+    font-size: 0.85rem;
+    border-radius: 4px;
+    margin: 0;
+}
+
+.switch-btn:hover {
+    background-color: white;
+    color: var(--primary-color);
+}
+
+.section-header .logout-btn {
+    background-color: transparent;
+    border: 1px solid var(--accent-color);
+    color: var(--accent-color);
+    padding: 6px 15px;
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+.section-header .logout-btn:hover {
+    background-color: var(--accent-color);
+    color: var(--primary-color);
+}
+
+/* ===================================
+   Navigation
+   =================================== */
+nav {
+    background-color: var(--primary-color);
+    padding: 10px 0;
+    text-align: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+nav ul li {
+    display: inline;
+    margin: 0 15px;
+}
+
+nav ul li a {
+    text-decoration: none;
+    color: white;
+    font-size: 1.1rem;
+    padding: 10px 15px;
+    background-color: transparent;
+    transition: color 0.3s ease-in-out;
+    margin: 0;
+}
+
+nav ul li a:hover {
+    color: var(--accent-color);
+    background-color: transparent;
+}
+
+/* ===================================
+   Links (General)
+   =================================== */
+a {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 4px;
+    text-decoration: none;
+    display: inline-block;
+    margin: 10px 5px;
+    transition: background-color 0.3s ease-in-out;
+}
+
+a:hover {
+    background-color: var(--hover-color);
+}
+
+a:focus {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+}
+
+/* ===================================
+   Footer
+   =================================== */
+footer {
+    background: var(--primary-color);
+    color: white;
+    text-align: center;
+    padding: 15px 10px;
+}
+
+footer p {
+    color: white;
+    margin: 0;
+}
+
+/* ===================================
+   Forms - General
+   =================================== */
+form {
+    text-align: center;
+    margin: 20px 0;
+}
+
+label {
+    display: inline-block;
+    color: var(--primary-color);
+    font-weight: 600;
+    margin: 8px 10px 8px 0;
+    font-size: 1rem;
+}
+
+input, select {
+    padding: 8px 12px;
+    border: 1px solid var(--primary-color);
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input:focus, select:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(255, 204, 0, 0.3);
+}
+
+input::placeholder {
+    color: var(--text-muted);
+}
+
+/* Input width utilities */
+.input-sm {
+    width: 60px;
+}
+
+.input-md {
+    width: 80px;
+}
+
+/* Checkbox styling */
+input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--primary-color);
+    vertical-align: middle;
+}
+
+/* Range slider styling */
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 150px;
+    height: 8px;
+    background: var(--border-color);
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+    vertical-align: middle;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    background: var(--hover-color);
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+}
+
+input[type="range"]:focus {
+    box-shadow: none;
+}
+
+/* Date input specific styling */
+input[type="date"] {
+    cursor: pointer;
+}
+
+/* ===================================
+   Buttons
+   =================================== */
+button {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin: 10px 5px;
+    font-size: 1rem;
+    transition: background-color 0.3s ease-in-out;
+}
+
+button:hover {
+    background-color: var(--hover-color);
+}
+
+button:focus {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+}
+
+button:disabled {
+    background-color: var(--text-muted);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* ===================================
+   Tables
+   =================================== */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px auto;
+    table-layout: fixed;
+    max-width: 1000px;
+    background-color: white;
+}
+
+th, td {
+    padding: 12px 10px;
+    text-align: left;
+    border: 1px solid var(--primary-color);
+}
+
+th {
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+}
+
+/* Alternating row colors for readability */
+tbody tr:nth-child(even) {
+    background-color: var(--light-bg);
+}
+
+tbody tr:hover {
+    background-color: #e8e8f4;
+}
+
+td input, td select {
+    width: 100%;
+    max-width: 100%;
+}
+
+.exercise-separator {
+    border-top: 7px solid var(--primary-color) !important;
+}
+
+.exercise-separator td {
+    padding-top: 20px;
+    font-weight: 600;
+    color: #222;
+}
+
+/* ===================================
+   Lists (outside nav)
+   =================================== */
+main ul {
+    list-style: disc;
+    padding-left: 40px;
+    text-align: left;
+    max-width: 600px;
+    margin: 15px auto;
+}
+
+main ul li {
+    color: var(--primary-color);
+    padding: 8px 0;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+/* ===================================
+   Flash Messages
+   =================================== */
+.flash-message {
+    color: var(--primary-color);
+    font-weight: bold;
+    padding: 12px 20px;
+    margin: 15px auto;
+    max-width: 600px;
+    background-color: #e8e8f4;
+    border-left: 4px solid var(--primary-color);
+    border-radius: 4px;
+    text-align: center;
+}
+
+.flash-message.success {
+    color: var(--success-color);
+    background-color: #d4edda;
+    border-left-color: var(--success-color);
+}
+
+.flash-message.error {
+    color: var(--error-color);
+    background-color: #f8d7da;
+    border-left-color: var(--error-color);
+}
+
+/* ===================================
+   Form-specific Classes
+   =================================== */
+.date_and_notes {
+    color: var(--primary-color);
+    font-weight: bold;
+}
+
+/* Intensity display */
+#intensity-value {
+    display: inline-block;
+    min-width: 25px;
+    font-size: 1.2rem;
+    color: var(--primary-color);
+}
+
+/* Set number display */
+#set-number-display {
+    display: inline-block;
+}
+
+/* Hidden by default, shown via JS */
+#sets-input {
+    display: none;
+    width: 60px;
+}
+
+/* ===================================
+   Span elements
+   =================================== */
+span {
+    color: var(--primary-color);
+}
+
+/* ===================================
+   Choices.js Overrides
+   =================================== */
+.choices__inner {
+    min-height: 25px;
+    padding: 5px;
+    font-size: 16px;
+    border: 1px solid var(--primary-color);
+    border-radius: 4px;
+}
+
+.choices__list--dropdown .choices__item {
+    padding: 8px;
+    font-size: 16px;
+}
+
+.choices__list--dropdown .choices__item--selectable.is-highlighted {
+    background-color: var(--light-bg);
+    color: var(--primary-color);
+}
+
+.choices[data-type*="select-one"] .choices__input {
+    padding: 8px;
+}
+
+/* ===================================
+   Login/Register Page Specific
+   =================================== */
+main form label {
+    display: block;
+    text-align: center;
+    margin-top: 15px;
+}
+
+main form input[type="text"],
+main form input[type="password"],
+main form input[type="email"] {
+    display: block;
+    margin: 8px auto;
+    width: 100%;
+    max-width: 300px;
+}
+
+/* ===================================
+   View Workout Page Styling
+   =================================== */
+.workout-display {
+    max-width: 700px;
+    margin: 0 auto;
+    text-align: left;
+}
+
+.workout-display > p {
+    text-align: left;
+}
+
+/* Session date header */
+.workout-display > strong > p,
+.workout-display strong p {
+    font-size: 1.4rem;
+    text-align: left;
+    background-color: var(--primary-color);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 6px;
+    margin: 0 0 5px 0;
+}
+
+/* Session notes */
+.workout-display > p:nth-of-type(1) {
+    background-color: var(--light-bg);
+    padding: 10px 20px;
+    border-left: 4px solid var(--accent-color);
+    margin-bottom: 20px;
+}
+
+/* Separator lines */
+.workout-display > p:-webkit-any(:contains("-----------------"), :contains("-------------------------------")) {
+    display: none;
+}
+
+/* Exercise name headers */
+.workout-display strong p:not(:first-child) {
+    background-color: var(--hover-color);
+    color: white;
+    padding: 10px 15px;
+    margin: 25px 0 5px 0;
+    border-radius: 4px;
+    font-size: 1.1rem;
+}
+
+/* Exercise notes */
+.workout-display > p:has(+ strong),
+.workout-display p[class=""] {
+    padding-left: 15px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* Set rows */
+.workout-display > p:last-of-type,
+.workout-display p:not(:empty) {
+    padding: 8px 15px 8px 30px;
+    margin: 2px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Alternative: Card-based workout view (use .workout-card class) */
+.workout-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin: 20px auto;
+    max-width: 700px;
+}
+
+.workout-card .session-date {
+    font-size: 1.3rem;
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+.workout-card .session-notes {
+    background-color: var(--light-bg);
+    padding: 10px 15px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    font-style: italic;
+    color: var(--text-muted);
+}
+
+.workout-card .exercise-block {
+    margin: 20px 0;
+    padding: 15px;
+    background-color: #fafafa;
+    border-left: 4px solid var(--primary-color);
+    border-radius: 0 8px 8px 0;
+}
+
+.workout-card .exercise-name {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: var(--primary-color);
+    margin-bottom: 5px;
+}
+
+.workout-card .exercise-notes {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-bottom: 10px;
+}
+
+.workout-card .set-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 10px;
+    margin: 5px 0;
+    background-color: white;
+    border-radius: 4px;
+}
+
+.workout-card .set-number {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.workout-card .set-details {
+    color: #333;
+}
+
+/* ===================================
+   View/Edit Page Specific
+   =================================== */
+.session-header {
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+.exercise-block {
+    margin: 20px 0;
+    padding: 15px;
+    background-color: var(--light-bg);
+    border-radius: 8px;
+}
+
+.set-row {
+    padding: 5px 0;
+    margin-left: 20px;
+}
+
+/* Separator for workout view */
+.workout-separator {
+    border: none;
+    border-top: 2px dashed var(--border-color);
+    margin: 20px 0;
+}
+
+/* ===================================
+   Utility Classes
+   =================================== */
+.text-center {
+    text-align: center;
+}
+
+.text-left {
+    text-align: left;
+}
+
+.mt-1 { margin-top: 10px; }
+.mt-2 { margin-top: 20px; }
+.mb-1 { margin-bottom: 10px; }
+.mb-2 { margin-bottom: 20px; }
+
+.hidden {
+    display: none;
+}
+
+/* ===================================
+   Responsive Adjustments
+   =================================== */
+@media (max-width: 768px) {
+    h1 {
+        font-size: 1.8rem;
+        letter-spacing: 1px;
+    }
+    
+    h2 {
+        font-size: 1.5rem;
+    }
+    
+    nav ul li {
+        display: block;
+        margin: 10px 0;
+    }
+    
+    .section-header {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .header-actions {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    table {
+        font-size: 0.9rem;
+    }
+    
+    th, td {
+        padding: 8px 5px;
+    }
+    
+    main {
+        padding: 10px;
+    }
+    
+    button, a {
+        padding: 8px 15px;
+        font-size: 0.9rem;
+    }
+    
+    /* Landing page responsive */
+    .panel-container {
+        flex-direction: column;
+    }
+    
+    .panel {
+        min-height: 50vh;
+    }
+    
+    .panel-weightlifting {
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .panel-title {
+        font-size: 2rem;
+    }
+    
+    .panel-icon {
+        font-size: 3rem;
+    }
+}

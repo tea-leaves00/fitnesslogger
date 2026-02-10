@@ -9,12 +9,17 @@
 </head>
 
 <body>
-    <header>
-        <a href="{{ url_for('weightlifting_index') }}">Weightlifting</a>
-        <a href="{{ url_for('cardio_index') }}">Cardio</a>
-        <a href="{{ url_for('logout') }}">Logout</a>
-    {% block navigation %}{% endblock %}
+    {% block header %}
+    <header class="section-header">
+        <div class="header-actions">
+            <a href="{{ url_for('weightlifting_index') }}" class="switch-btn">Weightlifting</a>
+            <a href="{{ url_for('cardio_index') }}" class="switch-btn">Cardio</a>
+            <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+        </div>
     </header>
+    {% endblock %}
+
+    {% block navigation %}{% endblock %}
 
     <main>
     {% block content %}{% endblock %}

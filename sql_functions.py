@@ -1,10 +1,15 @@
 import sqlite3
 from flask import session
+import os
+
+basedir = os.path.abspath(os.path.dirname(__file__))
+DB_PATH = os.path.join(basedir, 'exercises.db')
 
 # == CONNECT AND CLOSE ==
 def establish_connection():
-    conn = sqlite3.connect('../backend/exercises.db')
+    conn = sqlite3.connect(DB_PATH, timeout=10.0)
     conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA journal_mode=WAL")
     c = conn.cursor()
     return conn, c
 
@@ -69,21 +74,13 @@ def check_is_time_based(exercises, exercise_name, user_id):
     else:
         return True
 
-def get_time_based_exercises():
-    conn, c = establish_connection()
-    try:
-        result = c.execute("SELECT exercise_name FROM exercises WHERE is_time_based = 1").fetchall()
-        return [row[0] for row in result]
-    finally:
-        close_connection(conn)
+def get_time_based_exercises(c):
+    result = c.execute("SELECT exercise_name FROM exercises WHERE is_time_based = 1").fetchall()
+    return [row[0] for row in result]
 
-def get_time_based_custom_exercises(user_id):
-    conn, c = establish_connection()
-    try:
-        result = c.execute("SELECT exercise_name FROM custom_exercises WHERE user_id = ? AND is_time_based = 1", (user_id,)).fetchall()
-        return [row[0] for row in result]
-    finally:
-        close_connection(conn)
+def get_time_based_custom_exercises(c, user_id):
+    result = c.execute("SELECT exercise_name FROM custom_exercises WHERE user_id = ? AND is_time_based = 1", (user_id,)).fetchall()
+    return [row[0] for row in result]
 
 # == EDITS ==
 def edit_session_notes(c, workout_date,user_id):
@@ -110,18 +107,14 @@ def edit_custom_cardio(c, user_id, new_cardio, old_cardio):
     c.execute("UPDATE custom_cardio SET cardio_type = ? WHERE user_id = ? AND cardio_type = ?", (new_cardio, user_id, old_cardio))
 
 # == DISPLAY ==
-def display_exercises():
-    conn, c = establish_connection()
+def display_exercises(c):
     c.execute("SELECT exercise_id, exercise_name FROM exercises")
     exercises = sorted([row[1] for row in c.fetchall()])
-    close_connection(conn)
     return exercises
 
-def display_custom_exercises(user_id):
-    conn, c = establish_connection()
+def display_custom_exercises(c, user_id):
     c.execute("SELECT id, exercise_name FROM custom_exercises WHERE user_id = ?", (user_id,))
     exercises = sorted([row[1] for row in c.fetchall()])
-    close_connection(conn)
     return exercises
 
 def display_exercises_by_muscle_group():
@@ -162,7 +155,6 @@ def display_workout(session_date, user_id):
     workouts = c.fetchall()
     close_connection(conn)
     return workouts
-
 
 def view_custom_exercises(user_id):
     conn, c = establish_connection()
@@ -209,7 +201,7 @@ def create_custom_cardio(user_id, cardio_type):
     c.execute("INSERT INTO custom_cardio (user_id, cardio_type) VALUES (?, ?)", (user_id, cardio_type))
     close_connection(conn)
 
-# test this out with try except blocks, in case session row cant be inserted
+
 def insert_session(session_date, session_notes, user_id):
     conn, c = establish_connection()
     c.execute("""
@@ -258,12 +250,15 @@ def log_cardio_log(c, cardio_session_id, cardio_type, duration, distance, distan
         distance if distance else None, distance_unit if distance_unit else None,
         intensity if intensity else None))
 
-def display_cardio_types():
-    conn, c = establish_connection()
+def display_cardio_types(c):
     c.execute("SELECT cardio_type_name FROM cardio_types")
     cardio_types = sorted([row[0] for row in c.fetchall()])
-    close_connection(conn)
     return cardio_types
+
+def display_custom_cardio(c, user_id):
+    c.execute("SELECT cardio_type FROM custom_cardio WHERE user_id = ?", (user_id))
+    custom_cardio_types = sorted([row[0] for row in c.fetchall()])
+    return custom_cardio_types
 
 
 # == CLEAR SESSION ==

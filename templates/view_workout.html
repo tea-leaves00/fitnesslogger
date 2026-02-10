@@ -24,9 +24,8 @@
             <p>-------------------------------</p>
         {% endif%}
 
-
         {% if loop.first or (loop.previtem and loop.previtem[4] != exercise_name) %}
-            <p>Exercise: {{ exercise_name }}</p>
+            <strong><p>Exercise: {{ exercise_name }}</p></strong>
             <p>Exercise Notes: {{ exercise_notes }}</p>
         {% endif %}
 
@@ -39,6 +38,7 @@
                 <p>Set {{ set_number }}: {{ reps }} reps, Bodyweight</p>
             {% else %}
                 <p>Set {{ set_number }}: {{ reps }} reps, {{ weight }} lbs</p>
+            {% endif %}
         {% endif %}
 
     {% endfor %}
