@@ -47,11 +47,6 @@ def load_user(user_id):
     user = User(id=data[0], first_name=data[1], last_name=data[2], username=data[3], email=data[4])
     return user
 
-@app.route("/settings")
-@login_required
-def settings():
-    pass
-
 
 @app.route('/verify/<token>')
 def verify_email(token):

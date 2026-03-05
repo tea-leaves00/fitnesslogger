@@ -129,7 +129,7 @@ def save_reset_token(email, token):
     close_connection(conn)
 
 def send_password_reset_email(email, token):
-    reset_link = f"http://127.0.0.1:5000/reset-password/{token}"
+    reset_link = f"{Config.BASE_URL}/reset_password/{token}"
     
     params = {
         "from": "Workout Tracker <onboarding@resend.dev>",
@@ -228,22 +228,6 @@ def get_time_based_custom_exercises(c, user_id):
     return [row[0] for row in result]
 
 # == EDITS ==
-def edit_session_notes(c, workout_date,user_id):
-    try: 
-        new_notes = input("Enter your new notes. Press Enter if you'd like to enter nothing: ").strip()
-
-        c.execute("""
-                UPDATE workout_sessions
-                SET session_notes = ?
-                WHERE session_date = ?
-                AND user_id = ?;
-                """, (new_notes if new_notes else None, workout_date, user_id))
-        
-        print("Notes updated succesfully.")
-        return
-    
-    except sqlite3.Error as e:
-        print(f"Database error: {e}")
 
 def edit_custom_exercises(c, user_id, new_exercise, old_exercise):
     c.execute("UPDATE custom_exercises SET exercise_name = ? WHERE user_id = ? AND exercise_name = ?", (new_exercise, user_id, old_exercise))
