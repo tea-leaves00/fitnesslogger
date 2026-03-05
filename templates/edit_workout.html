@@ -1,6 +1,6 @@
 {% extends "base_weightlifting.html" %}
 
-{% block title %}Edit Workout - Workout App{% endblock %}
+{% block title %}Edit Workout {% endblock %}
 
 {% block weightlifting_content %}
 
@@ -8,6 +8,7 @@
 
 {% if workouts %}
     <form action="{{ url_for('edit_workout', session_date=session_date) }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         {% for session_id, session_date, session_notes, 
             workout_log_id, exercise_name, exercise_notes, 
             set_id, set_number, reps, weight, is_time_based in workouts %}

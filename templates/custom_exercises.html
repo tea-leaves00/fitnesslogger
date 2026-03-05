@@ -1,6 +1,6 @@
 {% extends "base_weightlifting.html" %}
 
-{% block title %} Custom Exercises - Workout App {% endblock %}
+{% block title %} Custom Exercises {% endblock %}
 
 {% block weightlifting_content %}
 <p>Not satisfied with the current list of exercises? 
@@ -8,37 +8,44 @@
     You can add, edit, delete or view your custom exercises from this page at anytime.</p>
 
 <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label for="create_custom_exercise">Add a custom exercise</label>
-    <input type="text" name="create_custom_exercise" id="create_custom_exercise">
+    <input type="text" name="create_custom_exercise" id="create_custom_exercise" required>
     <button type="submit" name="action" value="add_exercise">Add Exercise</button>
 </form>
 
 <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button type="submit" name="action" value="view_exercises">View Your Custom Exercises</button>
 </form>
 
-{% if custom_exercises%}
-    {% for exercise in custom_exercises %}
+{% if custom_exercises %}
+    {% if editing_exercise %}
+        <form action="/custom_exercises" method="POST"></form>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <ul>
+            {% for exercise in custom_exercises %}
+                <li>
+                    <input type="hidden" name="old_exercise" value="{{ exercise }}">
+                    <input type="text" name="new_exercise" value="{{ exercise }}">
+                </li>
+            {% endfor %}
+            </ul>
+            <button type="submit" name="action" value="save_changes">Save Changes</button>
+        </form>
+    {% else %}
+        {% for exercise in custom_exercises %}
         <ul>
             <li>{{ exercise }}</li>
         </ul>
-    {% endfor %}
-    <form method="POST">
-        <button type="submit" name="action" value="edit_exercises">Edit exercises</button>
-    </form>
-    {% if editing_exercise %}
-    <form action="/custom_exercises" method="POST">
-        <ul>
-        {% for exercise in custom_exercises %}
-            <li>
-                <input type="hidden" name="old_exercise" value="{{ exercise }}">
-                <input type="text" name="new_exercise" value="{{ exercise }}">
-            </li>
         {% endfor %}
-        </ul>
-        <button type="submit" name="action" value="save_changes">Save Changes</button>
-    </form>
     {% endif %}
 {% endif %}
+
+<form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" name="action" value="edit_exercises">Edit exercises</button>
+</form>
+    
 {% endblock %}
 

@@ -1,6 +1,6 @@
 {% extends "base_weightlifting.html" %}
 
-{% block title %} Log Workout - Workout App {% endblock %}
+{% block title %} Log Workout {% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
@@ -10,23 +10,24 @@
 {% block weightlifting_content %}
 {% if date_selection %}
 <form action="/log_workout" method="POST">
-    <h3>Select workout date and enter any notes for the session</h2>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label for="session_date" class="date_and_notes">Session Date</label>
     <input type="date" id="session_date" class="date_and_notes" name="session_date" value="{{ session.get('session_date', '') }}" required>
     <label for="session_notes" class="date_and_notes">Session Notes (optional)</label>
     <input type="text" id="session_notes" class="date_and_notes" name="session_notes" value="{{ session.get('session_notes', '') }}">
     <br>
-    <button type="submit" name="action" value="select_date">Continue to Add Sets</button>
+    <button type="submit" name="action" value="select_date">Continue</button>
 </form>
 {% endif %}
 
 <!-- Set Logging -->
 {% if not date_selection %}
 <form action="/log_workout" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <table>
         <!-- Table Headers -->
         <tr>
-            <th>Exercise Name</th>
+            <th>Exercise</th>
             <th>Exercise Notes (One Per Exercise)</th>
             <th>Sets</th>
             <th>Reps</th>
@@ -103,7 +104,7 @@
     </table>
 
     <button type="submit" name="action" value="back">Back to Date Selection</button>
-    <button type="submit" name="action" value="add_set">Add Set</button>    
+    <button type="submit" name="action" value="add_set">Log Set</button>    
     <button type="submit" name="action" value="reset">Reset</button>
     <br>
     <button type="submit" name="action" value="finish_workout">Finish Workout</button>

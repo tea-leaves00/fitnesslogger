@@ -5,6 +5,7 @@
 {% block cardio_content %}
 {% if date_selection %}
 <form action="/log_cardio" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <h3>Select workout date and enter any notes for the session</h2>
     <label for="session_date" class="date_and_notes">Session Date</label>
     <input type="date" id="session_date" class="date_and_notes" name="session_date" value="{{ session.get('session_date', '') }}" required>
@@ -17,6 +18,7 @@
 
 {% if not date_selection %}
 <form action="/log_cardio" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <!-- Cardio Logs -->
     <table>
         <tr>

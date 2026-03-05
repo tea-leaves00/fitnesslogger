@@ -1,6 +1,6 @@
 {% extends "base_cardio.html" %}
 
-{% block title %}Edit Cardio Session - Workout App{% endblock %}
+{% block title %}Edit Cardio Session{% endblock %}
 
 {% block cardio_content %}
 
@@ -8,6 +8,7 @@
 
 {% if cardio_session %}
     <form action="{{ url_for('edit_cardio_session', session_date=session_date) }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         {% for session_id, sess_date, session_notes, log_id, duration, distance, distance_unit, intensity, cardio_type_name in cardio_session %}
             {% if loop.first %}
                 <input type="hidden" name="session_id" value="{{ session_id }}">

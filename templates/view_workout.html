@@ -1,10 +1,11 @@
 {% extends "base_weightlifting.html" %}
 
-{% block title %}View Workout - Workout App{% endblock %}
+{% block title %}View Workout{% endblock %}
 
 {% block weightlifting_content %}
 
 <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="date" name="session_date" value="{{ session.get('session_date', '') }}">
     <button type="submit" name="action" value="view">View Workout</button>
 </form>

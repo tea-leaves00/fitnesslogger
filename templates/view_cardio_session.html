@@ -1,26 +1,40 @@
 {% extends "base_cardio.html" %}
 
-{% block title %}View Cardio Session - Workout App{% endblock %}
+{% block title %}View Cardio Session{% endblock %}
 
 {% block cardio_content %}
 
 <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="date" name="session_date" value="{{ session.get('session_date', '') }}">
     <button type="submit" name="action" value="view">View Session</button>
 </form>
 
 {% if cardio_session %}
-    {% for session_id, session_date, session_notes, log_id, duration, distance, distance_unit, intensity, cardio_type in cardio_session %}
+    {% for session_id, session_date, session_notes, 
+        log_id, duration, distance, distance_unit, 
+        intensity, cardio_type in cardio_session %}
+
         {% if loop.first %}
-            <p>{{ session_date }}</p>
-            <p>{{ session_notes }}</p>
+            <strong><p>{{ session_date }}</p></strong>
+            <p>Session Notes: {{ session_notes }}</p>
+            <p>-----------------</p>
         {% endif %}
+
+        {% if loop.previtem and loop.previtem[0] != session_id %}
+            <p>-------------------------------</p>
+        {% endif%}
 
         {% if loop.first or (loop.previtem and loop.previtem[8] != cardio_type) %}
-            <p>{{ cardio_type }}</p>
+            <strong><p>{{ cardio_type }}</p></strong>
         {% endif %}
 
-        <p>Duration: {{ duration }} </p>
+        {% set hours = duration // 3600 %}
+        {% set remaining = duration % 3600 %}
+        {% set minutes = remaining // 60 %}
+        {% set seconds = remaining % 60 %}
+
+        <p>Duration: {{ hours }}h {{ minutes }}m {{ seconds }}s</p>
         <p>Distance: {{ distance }} {{ distance_unit}}</p>
         <p>Intensity (scale 1-10): {{ intensity }}</p>
 

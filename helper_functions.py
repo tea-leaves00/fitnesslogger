@@ -1,9 +1,11 @@
 import sqlite3
 from flask import session
-import os
+from config import Config
+import secrets
+import resend
 
-basedir = os.path.abspath(os.path.dirname(__file__))
-DB_PATH = os.path.join(basedir, 'exercises.db')
+DB_PATH = Config.DB_PATH
+resend.api_key = Config.RESEND_API_KEY
 
 # == CONNECT AND CLOSE ==
 def establish_connection():
@@ -16,6 +18,68 @@ def establish_connection():
 def close_connection(conn):
     conn.commit()
     conn.close()
+
+# == EMAIL VERIFICATION == 
+def generate_verification_token():
+    return secrets.token_urlsafe(32)
+
+def save_verification_token(email, token):
+    conn, c = establish_connection()
+    c.execute("""
+        UPDATE users 
+        SET verification_token = ?, token_created_at = CURRENT_TIMESTAMP
+        WHERE email = ?
+    """, (token, email))
+    close_connection(conn)
+
+def send_verification_email(email, token):
+    verification_link = f"{Config.BASE_URL}/verify/{token}"
+    
+    params = {
+        "from": "My Workout App <onboarding@resend.dev>",
+        "to": [email],
+        "subject": "Verify your account",
+        "html": f"""
+            <h2>Welcome to My Workout App!</h2>
+            <p>Click the link below to verify your account:</p>
+            <p><a href="{verification_link}">{verification_link}</a></p>
+            <p>This link expires in 24 hours.</p>
+        """,
+    }
+    
+    resend.Emails.send(params)
+
+def verify_user_token(token):
+    conn, c = establish_connection()
+    c.execute("""
+        SELECT id, token_created_at FROM users 
+        WHERE verification_token = ?
+    """, (token,))
+    result = c.fetchone()
+    
+    if not result:
+        close_connection(conn)
+        return False, "Invalid token"
+    
+    user_id, token_created_at = result
+    
+    c.execute("""
+        SELECT (julianday('now') - julianday(?)) * 24 < 24
+    """, (token_created_at,))
+    is_valid = c.fetchone()[0]
+    
+    if not is_valid:
+        close_connection(conn)
+        return False, "Token expired"
+    
+    c.execute("""
+        UPDATE users 
+        SET verified = 1, verification_token = NULL, token_created_at = NULL
+        WHERE id = ?
+    """, (user_id,))
+    close_connection(conn)
+    
+    return True, "Account verified"
 
 # == USERS == 
 def create_user(first_name, last_name, username, password_hash, email):
@@ -39,10 +103,86 @@ def get_user_by_id(user_id):
 
 def get_user_by_username(username):
     conn, c = establish_connection()
-    c.execute("SELECT id, first_name, last_name, username, email, password FROM users WHERE username = ?", (username,))
+    c.execute("SELECT id, first_name, last_name, username, email, password, verified FROM users WHERE username = ?", (username,))
     data = c.fetchone()
     close_connection(conn)
     return data
+
+def get_user_by_email(email):
+    conn, c = establish_connection()
+    c.execute("SELECT id FROM users WHERE email = ?", (email,))
+    data = c.fetchone()
+    close_connection(conn)
+    if data:  
+        return True
+    else: 
+        return False
+
+
+def save_reset_token(email, token):
+    conn, c = establish_connection()
+    c.execute("""
+        UPDATE users 
+        SET reset_token = ?, reset_token_created_at = CURRENT_TIMESTAMP
+        WHERE email = ?
+    """, (token, email))
+    close_connection(conn)
+
+def send_password_reset_email(email, token):
+    reset_link = f"http://127.0.0.1:5000/reset-password/{token}"
+    
+    params = {
+        "from": "Workout Tracker <onboarding@resend.dev>",
+        "to": [email],
+        "subject": "Reset your password",
+        "html": f"""
+            <h2>Password Reset Request</h2>
+            <p>Click the link below to reset your password:</p>
+            <p><a href="{reset_link}">{reset_link}</a></p>
+            <p>This link expires in 24 hours.</p>
+            <p>If you didn't request this, you can ignore this email.</p>
+        """,
+    }
+    
+    resend.Emails.send(params)
+
+def verify_reset_token(token):
+    conn, c = establish_connection()
+    
+    c.execute("""
+        SELECT id, reset_token_created_at FROM users 
+        WHERE reset_token = ?
+    """, (token,))
+    result = c.fetchone()
+    
+    if not result:
+        close_connection(conn)
+        return None, "Invalid token"
+    
+    user_id, token_created_at = result
+    
+    c.execute("""
+        SELECT (julianday('now') - julianday(?)) * 24 < 24
+    """, (token_created_at,))
+    is_valid = c.fetchone()[0]
+    
+    if not is_valid:
+        close_connection(conn)
+        return None, "Token expired"
+    
+    close_connection(conn)
+    return user_id, "Valid"
+
+def update_password(user_id, password_hash):
+    conn, c = establish_connection()
+    c.execute("UPDATE users SET password = ? WHERE id = ?", (password_hash, user_id))
+    close_connection(conn)
+
+def clear_reset_token(user_id):
+    conn, c = establish_connection()
+    c.execute("UPDATE users SET reset_token = NULL, reset_token_created_at = NULL WHERE id = ?", (user_id,))
+    close_connection(conn)
+
 
 # == SELECT ==
 def get_exercise_id(c, exercise_name):
@@ -55,8 +195,13 @@ def get_custom_exercise_id(c, custom_exercise, user_id):
     exercise_id = c.fetchone()[0]
     return exercise_id
 
-def get_session_ids(c, session_date, user_id):
+def get_workout_session_ids(c, session_date, user_id):
     c.execute("SELECT id FROM workout_sessions WHERE session_date = ? AND user_id = ?", (session_date, user_id))
+    session_ids = [id[0] for id in c.fetchall()]
+    return session_ids
+
+def get_cardio_session_ids(c, session_date, user_id):
+    c.execute("SELECT id FROM cardio_sessions WHERE session_date = ? AND user_id = ?", (session_date, user_id))
     session_ids = [id[0] for id in c.fetchall()]
     return session_ids
 
@@ -133,7 +278,7 @@ def display_exercises_by_muscle_group():
 
 def display_workout(session_date, user_id):
     conn, c = establish_connection()
-    session_ids = get_session_ids(c, session_date, user_id)
+    session_ids = get_workout_session_ids(c, session_date, user_id)
     placeholders = ','.join('?' * len(session_ids))
 
     query = f"""
@@ -174,18 +319,22 @@ def view_custom_cardio(user_id):
 
 def display_cardio_session(session_date, user_id):
     conn, c = establish_connection()
-    query = """
+    session_ids = get_cardio_session_ids(c, session_date, user_id)
+    placeholders = ','.join('?' * len(session_ids))
+
+    query = f"""
         SELECT cardio_sessions.id, cardio_sessions.session_date, cardio_sessions.session_notes,
         cardio_logs.id, cardio_logs.duration, cardio_logs.distance, cardio_logs.distance_unit, cardio_logs.intensity,
-        cardio_types.cardio_type_name
+        COALESCE(cardio_types.cardio_type_name, custom_cardio.cardio_type) AS cardio_type
         FROM cardio_sessions
         JOIN cardio_logs ON cardio_sessions.id = cardio_logs.cardio_session_id
-        JOIN cardio_types ON cardio_logs.cardio_type_id = cardio_types.cardio_type_id
-        WHERE cardio_sessions.session_date = ? AND user_id = ?
+        LEFT JOIN cardio_types ON cardio_logs.cardio_type_id = cardio_types.cardio_type_id
+        LEFT JOIN custom_cardio ON cardio_logs.custom_cardio_id = custom_cardio.id
+        WHERE cardio_sessions.id IN ({placeholders})
         ORDER by cardio_logs.id
         """
     
-    c.execute(query, (session_date,user_id))
+    c.execute(query, session_ids)
     session = c.fetchall()
     close_connection(conn)
     return session

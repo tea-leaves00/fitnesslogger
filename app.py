@@ -4,15 +4,16 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.security import generate_password_hash, check_password_hash
 from user_class import User
-from sql_functions import *
-
+from helper_functions import *
+from flask_wtf.csrf import CSRFProtect
 
 
 app = Flask(__name__)
-app.config.from_pyfile('config.py')
+app.config.from_object('config.DevConfig')
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login' 
+csrf = CSRFProtect(app)
 
 # == LIMITER ==
 limiter = Limiter(
@@ -27,6 +28,7 @@ def add_cache_headers(response):
     if response.content_type and response.content_type.startswith('text/html'):
         response.headers['Cache-Control'] = 'no-store, private'
         response.headers['Pragma'] = 'no-cache'
+        response.headers['X-Content-Type-Options'] = 'nosniff'
     
     return response
 
@@ -46,10 +48,20 @@ def load_user(user_id):
 def settings():
     pass
 
-# regex for email verification??
-# strong password requirement
+
+@app.route('/verify/<token>')
+def verify_email(token):
+    success, message = verify_user_token(token)
+    flash(message)
+
+    if success:
+        return redirect(url_for('login'))
+    else:
+        return redirect(url_for('register'))
+
 
 @app.route('/register', methods=['GET', 'POST'])
+@limiter.limit("10 per minute")
 def register():
     if request.method == 'POST':
         first_name = request.form.get('first_name')
@@ -60,15 +72,21 @@ def register():
         password_hash = generate_password_hash(password)
 
         if create_user(first_name, last_name, username, password_hash, email):
-            flash("Registration successful! Please log in.")
-            return redirect(url_for('login'))
+            token = generate_verification_token()
+            save_verification_token(email, token)
+            send_verification_email(email, token)
+
+            flash("Registration successful! Check your email to verify your account.")
+            return redirect(url_for('register'))
         else:
             flash("Username or email already exists.")
             return redirect(url_for('register'))
     
     return render_template('register.html')
     
+
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("10 per minute")
 def login():
     if request.method == 'POST':
         username = request.form.get('username')
@@ -82,6 +100,10 @@ def login():
         
         password_hash = data[5]
         if check_password_hash(password_hash, password):
+            if data[6] == 0:
+                flash("Please verify your email before logging in.")
+                return redirect(url_for('login'))
+            
             user = User(id=data[0], first_name=data[1], last_name=data[2], 
             username=data[3], email=data[4])
             login_user(user)
@@ -91,6 +113,50 @@ def login():
             return redirect(url_for('login'))
 
     return render_template('login.html')
+
+@app.route('/forgot_password', methods=['GET', 'POST'])
+@limiter.limit("10 per minute")
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        
+        user = get_user_by_email(email)
+        
+        if user:
+            token = generate_verification_token()
+            save_reset_token(email, token)
+            send_password_reset_email(email, token)
+        
+        flash("If an account with that email exists, you'll receive a reset link.")
+        return redirect(url_for('forgot_password'))
+    
+    return render_template('forgot_password.html')
+
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    user_id, message = verify_reset_token(token)
+    
+    if not user_id:
+        flash(message)
+        return redirect(url_for('login'))
+    
+    if request.method == 'POST':
+        password = request.form.get('password')
+        confirmation = request.form.get('confirmation')
+        
+        if password != confirmation:
+            flash("Passwords don't match")
+            return redirect(url_for('reset_password', token=token))
+        
+        password_hash = generate_password_hash(password)
+        update_password(user_id, password_hash)
+        clear_reset_token(user_id)
+        
+        flash("Password updated! You can now log in.")
+        return redirect(url_for('login'))
+    
+    return render_template('reset_password.html', token=token)
+
 
 @app.route("/logout")
 @login_required
@@ -116,9 +182,6 @@ def weightlifting_index():
     return render_template('weightlifting_index.html')
 
 # == LOG WORKOUT ==
-# little trash can icons next to each set
-# any other places I need to add session.modified?
-
 @app.route('/log_workout', methods=['POST', 'GET'])
 @login_required
 def log_workout():
@@ -384,6 +447,9 @@ def custom_exercises():
     if request.method == 'POST':
         if request.form.get('action') == 'add_exercise':
             custom_exercise = request.form.get('create_custom_exercise')
+            if not custom_exercise:
+                flash("Please enter name of exercise")
+                return redirect(url_for('custom_exercises'))
             create_custom_exercise(user_id, custom_exercise)
             flash('Custom exercise added successfully!')
             return redirect(url_for('custom_exercises'))
@@ -402,6 +468,9 @@ def custom_exercises():
                     edit_custom_exercises(c, user_id, new_exercise, old_exercise)
             close_connection(conn)
 
+            flash("Exercises succesfully edited")
+            return redirect(url_for('custom_exercises'))
+
     return render_template('custom_exercises.html', custom_exercises=custom_exercises, editing_exercise=editing_exercise)
 
 
@@ -419,7 +488,9 @@ def cardio_index():
 @app.route('/log_cardio', methods=['GET', 'POST'])
 @login_required
 def log_cardio():
-    cardio_types = display_cardio_types()
+    conn, c = establish_connection()
+    cardio_types = display_cardio_types(c)
+    close_connection(conn)
     user_id = current_user.id
 
     if request.method == 'POST':
@@ -591,6 +662,9 @@ def custom_cardio():
     if request.method == 'POST':
         if request.form.get('action') == 'add_cardio':
             custom_cardio = request.form.get('create_custom_cardio')
+            if not custom_cardio:
+                flash("Please enter a name for the cardio type")
+                return redirect(url_for('custom_cardio'))
             create_custom_cardio(user_id, custom_cardio)
             flash('Custom cardio added successfully!')
             return redirect(url_for('custom_cardio'))
