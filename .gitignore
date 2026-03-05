@@ -4,6 +4,5 @@ random/
 __pycache__/
 *.pyc
 *.db
-*.db
 .DS_Store
 notes.txt
