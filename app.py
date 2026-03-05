@@ -6,10 +6,14 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from user_class import User
 from helper_functions import *
 from flask_wtf.csrf import CSRFProtect
+import os
 
 
 app = Flask(__name__)
-app.config.from_object('config.DevConfig')
+env = os.environ.get('FLASK_ENV', 'development')
+if env == 'production': app.config.from_object('config.ProdConfig')
+else: app.config.from_object('config.DevConfig')
+
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login' 

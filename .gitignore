@@ -6,5 +6,4 @@ __pycache__/
 *.db
 *.db
 .DS_Store
-config.py
 notes.txt
