@@ -36,7 +36,7 @@ def send_verification_email(email, token):
     verification_link = f"{Config.BASE_URL}/verify/{token}"
     
     params = {
-        "from": "My Workout App <onboarding@resend.dev>",
+        "from": "Fitness Logger <noreply@fitnesslogger.app>",
         "to": [email],
         "subject": "Verify your account",
         "html": f"""
@@ -132,7 +132,7 @@ def send_password_reset_email(email, token):
     reset_link = f"{Config.BASE_URL}/reset_password/{token}"
     
     params = {
-        "from": "Workout Tracker <onboarding@resend.dev>",
+        "from": "Fitness Logger <noreply@fitnesslogger.app>",
         "to": [email],
         "subject": "Reset your password",
         "html": f"""
