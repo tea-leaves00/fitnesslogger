@@ -6,6 +6,7 @@ class Config:
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
     DB_PATH = os.path.join(BASE_DIR, "exercises.db")
     SESSION_COOKIE_HTTPONLY = True
+    BASE_URL = "https://www.fitnesslogger.app"
 
 class DevConfig(Config):
     DEBUG = True
