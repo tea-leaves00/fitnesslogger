@@ -425,8 +425,7 @@ table {
     width: 100%;
     border-collapse: collapse;
     margin: 20px auto;
-    table-layout: fixed;
-    max-width: 1000px;
+    max-width: 1200px;
     background-color: white;
 }
 
@@ -500,18 +499,6 @@ main ul li {
     border-left: 4px solid var(--primary-color);
     border-radius: 4px;
     text-align: center;
-}
-
-.flash-message.success {
-    color: var(--success-color);
-    background-color: #d4edda;
-    border-left-color: var(--success-color);
-}
-
-.flash-message.error {
-    color: var(--error-color);
-    background-color: #f8d7da;
-    border-left-color: var(--error-color);
 }
 
 /* ===================================

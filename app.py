@@ -33,7 +33,6 @@ def add_cache_headers(response):
         response.headers['Cache-Control'] = 'no-store, private'
         response.headers['Pragma'] = 'no-cache'
         response.headers['X-Content-Type-Options'] = 'nosniff'
-    
     return response
 
 # == LOGIN ==
@@ -431,7 +430,6 @@ def edit_workout(session_date):
             return redirect(url_for('view_workout'))
 
 
-        
     return render_template('edit_workout.html', workouts=workouts, session_date=session_date)
 
 

@@ -40,12 +40,10 @@
             </ul>
         {% endfor %}
     {% endif %}
-    
     <form method="POST">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" name="action" value="edit_cardio">Edit</button>
     </form>
-    
 {% endif %}
 {% endblock %}
 
