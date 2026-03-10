@@ -457,12 +457,13 @@ def custom_exercises():
             custom_exercises = view_custom_exercises(user_id)
         elif request.form.get('action') == 'save_changes':
             old_exercises = request.form.getlist('old_exercise')
+            exercise_ids = request.form.getlist('exercise_id')
             new_exercises = request.form.getlist('new_exercise')
-
+            
             conn, c = establish_connection()
-            for old_exercise, new_exercise in zip(old_exercises, new_exercises):
+            for exercise_id, old_exercise, new_exercise in zip(exercise_ids, old_exercises, new_exercises):
                 if old_exercise != new_exercise:
-                    edit_custom_exercises(c, user_id, new_exercise, old_exercise)
+                    edit_custom_exercises(c, user_id, new_exercise, exercise_id)
             close_connection(conn)
 
             flash("Exercises succesfully edited")
@@ -672,12 +673,13 @@ def custom_cardio():
             custom_cardio = view_custom_cardio(user_id)
         elif request.form.get('action') == 'save_changes':
             old_cardio = request.form.getlist('old_cardio')
+            cardio_id = request.form.getlist('cardio_id')
             new_cardio = request.form.getlist('new_cardio')
 
             conn, c = establish_connection()
-            for old_card, new_card in zip(old_cardio, new_cardio):
+            for cardio_id, old_card, new_card in zip(cardio_id, old_cardio, new_cardio):
                 if old_card != new_card:
-                    edit_custom_cardio(c, user_id, new_card, old_card)
+                    edit_custom_cardio(c, user_id, new_card, cardio_id)
             close_connection(conn)
 
     return render_template('custom_cardio.html', custom_cardio=custom_cardio, editing_cardio=editing_cardio)

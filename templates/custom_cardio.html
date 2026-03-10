@@ -26,8 +26,9 @@
             <ul>
             {% for cardio in custom_cardio %}
                 <li>
-                    <input type="hidden" name="old_cardio" value="{{ cardio }}">
-                    <input type="text" name="new_cardio" value="{{ cardio }}">
+                    <input type="hidden" name="old_cardio" value="{{ cardio.name }}">
+                    <input type="hidden" name="cardio_id" value="{{ cardio.id }}">
+                    <input type="text" name="new_cardio" value="{{ cardio.name }}">
                 </li>
             {% endfor %}
             </ul>

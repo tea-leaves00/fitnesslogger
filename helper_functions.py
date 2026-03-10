@@ -229,11 +229,11 @@ def get_time_based_custom_exercises(c, user_id):
 
 # == EDITS ==
 
-def edit_custom_exercises(c, user_id, new_exercise, old_exercise):
-    c.execute("UPDATE custom_exercises SET exercise_name = ? WHERE user_id = ? AND exercise_name = ?", (new_exercise, user_id, old_exercise))
+def edit_custom_exercises(c, user_id, new_exercise, exercise_id):
+    c.execute("UPDATE custom_exercises SET exercise_name = ? WHERE user_id = ? AND id = ?", (new_exercise, user_id, exercise_id))
 
-def edit_custom_cardio(c, user_id, new_cardio, old_cardio):
-    c.execute("UPDATE custom_cardio SET cardio_type = ? WHERE user_id = ? AND cardio_type = ?", (new_cardio, user_id, old_cardio))
+def edit_custom_cardio(c, user_id, new_cardio, cardio_id):
+    c.execute("UPDATE custom_cardio SET cardio_type = ? WHERE user_id = ? AND id = ?", (new_cardio, user_id, cardio_id))
 
 # == DISPLAY ==
 def display_exercises(c):
@@ -287,17 +287,17 @@ def display_workout(session_date, user_id):
 
 def view_custom_exercises(user_id):
     conn, c = establish_connection()
-    c.execute("SELECT exercise_name FROM custom_exercises WHERE user_id = ?", (user_id,))
+    c.execute("SELECT id, exercise_name FROM custom_exercises WHERE user_id = ?", (user_id,))
     data = c.fetchall()
-    custom_exercises = [row[0] for row in data]
+    custom_exercises = [{"id": row[0], "name": row[1]} for row in data]
     close_connection(conn)
     return custom_exercises
 
 def view_custom_cardio(user_id):
     conn, c = establish_connection()
-    c.execute("SELECT cardio_type FROM custom_cardio WHERE user_id = ?", (user_id,))
+    c.execute("SELECT id, cardio_type FROM custom_cardio WHERE user_id = ?", (user_id,))
     data = c.fetchall()
-    custom_cardio = [row[0] for row in data]
+    custom_cardio = [{"id": row[0], "name": row[1]} for row in data]
     close_connection(conn)
     return custom_cardio
 

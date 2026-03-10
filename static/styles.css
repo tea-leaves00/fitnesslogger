@@ -1,6 +1,4 @@
-/* ===================================
-   Variables for consistency
-   =================================== */
+/* COLORS */
 :root {
     --primary-color: #080842;
     --hover-color: #0a0a5a;
@@ -12,9 +10,7 @@
     --error-color: #dc3545;
 }
 
-/* ===================================
-   Base Reset & Typography
-   =================================== */
+/* TYPOGRAPHY */
 * {
     font-family: Arial, sans-serif;
     box-sizing: border-box;
@@ -57,9 +53,7 @@ strong {
     color: var(--primary-color);
 }
 
-/* ===================================
-   Layout
-   =================================== */
+/* LAYOUT */
 html, body {
     height: 100%;
     margin: 0;
@@ -76,9 +70,7 @@ main {
     width: 100%;
 }
 
-/* ===================================
-   Landing Page - Split Panels
-   =================================== */
+/* LANDING PAGE */
 .landing-page {
     background: var(--primary-color);
 }

@@ -21,13 +21,14 @@
 
 {% if custom_exercises %}
     {% if editing_exercise %}
-        <form action="/custom_exercises" method="POST"></form>
+        <form action="/custom_exercises" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <ul>
             {% for exercise in custom_exercises %}
                 <li>
-                    <input type="hidden" name="old_exercise" value="{{ exercise }}">
-                    <input type="text" name="new_exercise" value="{{ exercise }}">
+                    <input type="hidden" name="old_exercise" value="{{ exercise.name }}">
+                    <input type="hidden" name="exercise_id" value="{{ exercise.id }}">
+                    <input type="text" name="new_exercise" value="{{ exercise.name }}">
                 </li>
             {% endfor %}
             </ul>
