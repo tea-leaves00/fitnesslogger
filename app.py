@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
-from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -7,7 +7,6 @@ from user_class import User
 from helper_functions import *
 from flask_wtf.csrf import CSRFProtect
 import os
-
 
 app = Flask(__name__)
 env = os.environ.get('FLASK_ENV', 'development')
@@ -35,7 +34,7 @@ def add_cache_headers(response):
         response.headers['X-Content-Type-Options'] = 'nosniff'
     return response
 
-# == LOGIN ==
+# == LOGIN & WHATNOT ==
 @login_manager.user_loader
 def load_user(user_id):
     data = get_user_by_id(int(user_id))
@@ -46,7 +45,6 @@ def load_user(user_id):
     user = User(id=data[0], first_name=data[1], last_name=data[2], username=data[3], email=data[4])
     return user
 
-
 @app.route('/verify/<token>')
 def verify_email(token):
     success, message = verify_user_token(token)
@@ -56,7 +54,6 @@ def verify_email(token):
         return redirect(url_for('login'))
     else:
         return redirect(url_for('register'))
-
 
 @app.route('/register', methods=['GET', 'POST'])
 @limiter.limit("10 per minute")
@@ -82,7 +79,6 @@ def register():
     
     return render_template('register.html')
     
-
 @app.route('/login', methods=['GET', 'POST'])
 @limiter.limit("10 per minute")
 def login():
@@ -155,7 +151,6 @@ def reset_password(token):
     
     return render_template('reset_password.html', token=token)
 
-
 @app.route("/logout")
 @login_required
 def logout():
@@ -164,13 +159,11 @@ def logout():
     flash("See ya next time!")
     return redirect(url_for('login'))
 
-
 # == MAIN PAGE ==
 @app.route('/')
 @login_required
 def index():
     return render_template('landing.html')
-
 
 # === WEIGHTLIFTING ===
 # == HOME ==
@@ -178,6 +171,15 @@ def index():
 @login_required
 def weightlifting_index():
     return render_template('weightlifting_index.html')
+
+# == EXERCISE LIST ==
+@app.route('/exercises', methods=['GET'])
+@login_required
+def exercises():
+    conn, c = establish_connection()
+    exercises = display_exercises(c)
+    close_connection(conn)
+    return render_template('exercises.html', exercises=exercises)
 
 # == LOG WORKOUT ==
 @app.route('/log_workout', methods=['POST', 'GET'])
@@ -288,7 +290,7 @@ def log_workout():
                 return redirect(url_for('log_workout'))
             if 'current_workout_id' not in session:
                 user_id = current_user.id
-                session_id = insert_session(session['session_date'], session['session_notes'], user_id)
+                session_id = insert_workout_session(session['session_date'], session['session_notes'], user_id)
                 session['current_workout_id'] = session_id
             
             exercises_processed = set()
@@ -309,9 +311,9 @@ def log_workout():
 
                     if set_data['same_sets'] == True:
                         for set_number in range(1, set_data['sets'] + 1):
-                            insert_sets(c, workout_log_id, set_number, set_data['reps'], set_data['weight'])
+                            insert_workout_sets(c, workout_log_id, set_number, set_data['reps'], set_data['weight'])
                     else:
-                        insert_sets(c, workout_log_id, set_data['set_number'], set_data['reps'], set_data['weight'])
+                        insert_workout_sets(c, workout_log_id, set_data['set_number'], set_data['reps'], set_data['weight'])
             finally:
                 close_connection(conn)
 
@@ -349,7 +351,6 @@ def view_workout():
     return render_template('view_workout.html', 
                            workouts=session.get('current_workout', []), 
                            workout_searched=session.get('workout_searched', False))
-
 
 # == EDIT WORKOUT == 
 @app.route('/edit_workout/<session_date>', methods=['GET', 'POST'])
@@ -432,7 +433,6 @@ def edit_workout(session_date):
 
     return render_template('edit_workout.html', workouts=workouts, session_date=session_date)
 
-
 # == CUSTOM EXERCISES ==
 @app.route('/custom_exercises', methods=['GET', 'POST'])
 @login_required
@@ -472,15 +472,12 @@ def custom_exercises():
     return render_template('custom_exercises.html', custom_exercises=custom_exercises, editing_exercise=editing_exercise)
 
 
-
-
 # === CARDIO ===
 # == HOME ==
 @app.route('/cardio_home', methods=['GET', 'POST'])
 @login_required
 def cardio_index():
     return render_template('cardio_index.html')
-
 
 # == LOG CARDIO ==
 @app.route('/log_cardio', methods=['GET', 'POST'])
@@ -581,7 +578,6 @@ def view_cardio_session():
     return render_template('view_cardio_session.html', cardio_session=session.get('current_session', []), 
                            session_searched=session.get('session_searched', False))
 
-
 # == EDIT CARDIO SESSION == 
 @app.route('/edit_cardio_session/<session_date>', methods=['GET', 'POST'])
 @login_required
@@ -648,7 +644,6 @@ def edit_cardio_session(session_date):
 
     return render_template('edit_cardio_session.html', cardio_session=cardio_session, session_date=session_date)
 
-
 # == CUSTOM CARDIO ==
 @app.route('/custom_cardio', methods=['GET', 'POST'])
 @login_required
@@ -683,6 +678,7 @@ def custom_cardio():
             close_connection(conn)
 
     return render_template('custom_cardio.html', custom_cardio=custom_cardio, editing_cardio=editing_cardio)
+
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -28,7 +28,7 @@ h1, h2, h3 {
 
 h1 {
     font-size: 2.5rem;
-    letter-spacing: 3px;
+    letter-spacing: 2px;
     margin-bottom: 1rem;
 }
 
@@ -162,9 +162,7 @@ main {
     transition: color 0.3s ease;
 }
 
-/* ===================================
-   Section Header (inside weightlifting/cardio)
-   =================================== */
+/* HEADERS */
 .section-header {
     background-color: var(--primary-color);
     padding: 10px 20px;
@@ -208,9 +206,7 @@ main {
     color: var(--primary-color);
 }
 
-/* ===================================
-   Navigation
-   =================================== */
+/* NAV */
 nav {
     background-color: var(--primary-color);
     padding: 10px 0;
@@ -244,9 +240,7 @@ nav ul li a:hover {
     background-color: transparent;
 }
 
-/* ===================================
-   Links (General)
-   =================================== */
+/* LINKS */
 a {
     background-color: var(--primary-color);
     color: white;
@@ -267,9 +261,7 @@ a:focus {
     outline-offset: 2px;
 }
 
-/* ===================================
-   Footer
-   =================================== */
+/* FOOTER */
 footer {
     background: var(--primary-color);
     color: white;
@@ -282,9 +274,7 @@ footer p {
     margin: 0;
 }
 
-/* ===================================
-   Forms - General
-   =================================== */
+/* FORMS */
 form {
     text-align: center;
     margin: 20px 0;
@@ -316,7 +306,6 @@ input::placeholder {
     color: var(--text-muted);
 }
 
-/* Input width utilities */
 .input-sm {
     width: 60px;
 }
@@ -325,7 +314,6 @@ input::placeholder {
     width: 80px;
 }
 
-/* Checkbox styling */
 input[type="checkbox"] {
     width: 18px;
     height: 18px;
@@ -334,7 +322,6 @@ input[type="checkbox"] {
     vertical-align: middle;
 }
 
-/* Range slider styling */
 input[type="range"] {
     -webkit-appearance: none;
     appearance: none;
@@ -375,14 +362,11 @@ input[type="range"]:focus {
     box-shadow: none;
 }
 
-/* Date input specific styling */
 input[type="date"] {
     cursor: pointer;
 }
 
-/* ===================================
-   Buttons
-   =================================== */
+/* BUTTONS */
 button {
     background-color: var(--primary-color);
     color: white;
@@ -410,9 +394,7 @@ button:disabled {
     opacity: 0.6;
 }
 
-/* ===================================
-   Tables
-   =================================== */
+/* TABLES */
 table {
     width: 100%;
     border-collapse: collapse;
@@ -436,7 +418,6 @@ th {
     letter-spacing: 0.5px;
 }
 
-/* Alternating row colors for readability */
 tbody tr:nth-child(even) {
     background-color: var(--light-bg);
 }
@@ -460,9 +441,7 @@ td input, td select {
     color: #222;
 }
 
-/* ===================================
-   Lists (outside nav)
-   =================================== */
+/* LISTS */
 main ul {
     list-style: disc;
     padding-left: 40px;
@@ -478,9 +457,7 @@ main ul li {
     line-height: 1.5;
 }
 
-/* ===================================
-   Flash Messages
-   =================================== */
+/* FLASH MESSAGES */
 .flash-message {
     color: var(--primary-color);
     font-weight: bold;
@@ -493,15 +470,12 @@ main ul li {
     text-align: center;
 }
 
-/* ===================================
-   Form-specific Classes
-   =================================== */
+/* FORM SPECIFIC CLASSES */
 .date_and_notes {
     color: var(--primary-color);
     font-weight: bold;
 }
 
-/* Intensity display */
 #intensity-value {
     display: inline-block;
     min-width: 25px;
@@ -509,27 +483,21 @@ main ul li {
     color: var(--primary-color);
 }
 
-/* Set number display */
 #set-number-display {
     display: inline-block;
 }
 
-/* Hidden by default, shown via JS */
 #sets-input {
     display: none;
     width: 60px;
 }
 
-/* ===================================
-   Span elements
-   =================================== */
+/* SPAN */
 span {
     color: var(--primary-color);
 }
 
-/* ===================================
-   Choices.js Overrides
-   =================================== */
+/* CHOICES.JS */
 .choices__inner {
     min-height: 25px;
     padding: 5px;
@@ -552,9 +520,7 @@ span {
     padding: 8px;
 }
 
-/* ===================================
-   Login/Register Page Specific
-   =================================== */
+/* LOGIN/REGISTER */
 main form label {
     display: block;
     text-align: center;
@@ -570,9 +536,7 @@ main form input[type="email"] {
     max-width: 300px;
 }
 
-/* ===================================
-   View Workout Page Styling
-   =================================== */
+/* VIEW WORKOUT PAGE */
 .workout-display {
     max-width: 700px;
     margin: 0 auto;
@@ -583,7 +547,6 @@ main form input[type="email"] {
     text-align: left;
 }
 
-/* Session date header */
 .workout-display > strong > p,
 .workout-display strong p {
     font-size: 1.4rem;
@@ -595,7 +558,6 @@ main form input[type="email"] {
     margin: 0 0 5px 0;
 }
 
-/* Session notes */
 .workout-display > p:nth-of-type(1) {
     background-color: var(--light-bg);
     padding: 10px 20px;
@@ -603,12 +565,10 @@ main form input[type="email"] {
     margin-bottom: 20px;
 }
 
-/* Separator lines */
 .workout-display > p:-webkit-any(:contains("-----------------"), :contains("-------------------------------")) {
     display: none;
 }
 
-/* Exercise name headers */
 .workout-display strong p:not(:first-child) {
     background-color: var(--hover-color);
     color: white;
@@ -618,7 +578,6 @@ main form input[type="email"] {
     font-size: 1.1rem;
 }
 
-/* Exercise notes */
 .workout-display > p:has(+ strong),
 .workout-display p[class=""] {
     padding-left: 15px;
@@ -626,7 +585,6 @@ main form input[type="email"] {
     font-style: italic;
 }
 
-/* Set rows */
 .workout-display > p:last-of-type,
 .workout-display p:not(:empty) {
     padding: 8px 15px 8px 30px;
@@ -634,7 +592,6 @@ main form input[type="email"] {
     border-bottom: 1px solid var(--border-color);
 }
 
-/* Alternative: Card-based workout view (use .workout-card class) */
 .workout-card {
     background: white;
     border-radius: 8px;
@@ -701,9 +658,7 @@ main form input[type="email"] {
     color: #333;
 }
 
-/* ===================================
-   View/Edit Page Specific
-   =================================== */
+/* VIEW/EDIT PAGE */
 .session-header {
     border-bottom: 2px solid var(--primary-color);
     padding-bottom: 10px;
@@ -722,16 +677,13 @@ main form input[type="email"] {
     margin-left: 20px;
 }
 
-/* Separator for workout view */
 .workout-separator {
     border: none;
     border-top: 2px dashed var(--border-color);
     margin: 20px 0;
 }
 
-/* ===================================
-   Utility Classes
-   =================================== */
+/* UTILITY CLASSES */
 .text-center {
     text-align: center;
 }
@@ -749,9 +701,7 @@ main form input[type="email"] {
     display: none;
 }
 
-/* ===================================
-   Responsive Adjustments
-   =================================== */
+/* RESPONSIVE ADJUSTMENTS */
 @media (max-width: 768px) {
     h1 {
         font-size: 1.8rem;
@@ -794,7 +744,6 @@ main form input[type="email"] {
         font-size: 0.9rem;
     }
     
-    /* Landing page responsive */
     .panel-container {
         flex-direction: column;
     }

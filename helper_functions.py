@@ -19,7 +19,7 @@ def close_connection(conn):
     conn.commit()
     conn.close()
 
-# == EMAIL VERIFICATION == 
+# == EMAIL VERIFICATION & RESET == 
 def generate_verification_token():
     return secrets.token_urlsafe(32)
 
@@ -80,44 +80,6 @@ def verify_user_token(token):
     close_connection(conn)
     
     return True, "Account verified"
-
-# == USERS == 
-def create_user(first_name, last_name, username, password_hash, email):
-    try:
-        conn, c = establish_connection()
-        c.execute("INSERT into users (first_name, last_name, username, password, email) VALUES (?, ?, ?, ?, ?)"
-                    ,(first_name, last_name, username, password_hash, email))
-        conn.commit()
-        close_connection(conn)
-        return True
-    except sqlite3.IntegrityError:
-        close_connection(conn)
-        return False
-    
-def get_user_by_id(user_id):
-    conn, c = establish_connection()
-    c.execute("SELECT id, first_name, last_name, username, email FROM users WHERE id = ?", (user_id,))
-    data = c.fetchone()
-    close_connection(conn)
-    return data
-
-def get_user_by_username(username):
-    conn, c = establish_connection()
-    c.execute("SELECT id, first_name, last_name, username, email, password, verified FROM users WHERE username = ?", (username,))
-    data = c.fetchone()
-    close_connection(conn)
-    return data
-
-def get_user_by_email(email):
-    conn, c = establish_connection()
-    c.execute("SELECT id FROM users WHERE email = ?", (email,))
-    data = c.fetchone()
-    close_connection(conn)
-    if data:  
-        return True
-    else: 
-        return False
-
 
 def save_reset_token(email, token):
     conn, c = establish_connection()
@@ -183,6 +145,42 @@ def clear_reset_token(user_id):
     c.execute("UPDATE users SET reset_token = NULL, reset_token_created_at = NULL WHERE id = ?", (user_id,))
     close_connection(conn)
 
+# == USERS == 
+def create_user(first_name, last_name, username, password_hash, email):
+    try:
+        conn, c = establish_connection()
+        c.execute("INSERT into users (first_name, last_name, username, password, email) VALUES (?, ?, ?, ?, ?)"
+                    ,(first_name, last_name, username, password_hash, email))
+        conn.commit()
+        close_connection(conn)
+        return True
+    except sqlite3.IntegrityError:
+        close_connection(conn)
+        return False
+    
+def get_user_by_id(user_id):
+    conn, c = establish_connection()
+    c.execute("SELECT id, first_name, last_name, username, email FROM users WHERE id = ?", (user_id,))
+    data = c.fetchone()
+    close_connection(conn)
+    return data
+
+def get_user_by_username(username):
+    conn, c = establish_connection()
+    c.execute("SELECT id, first_name, last_name, username, email, password, verified FROM users WHERE username = ?", (username,))
+    data = c.fetchone()
+    close_connection(conn)
+    return data
+
+def get_user_by_email(email):
+    conn, c = establish_connection()
+    c.execute("SELECT id FROM users WHERE email = ?", (email,))
+    data = c.fetchone()
+    close_connection(conn)
+    if data:  
+        return True
+    else: 
+        return False
 
 # == SELECT ==
 def get_exercise_id(c, exercise_name):
@@ -227,8 +225,11 @@ def get_time_based_custom_exercises(c, user_id):
     result = c.execute("SELECT exercise_name FROM custom_exercises WHERE user_id = ? AND is_time_based = 1", (user_id,)).fetchall()
     return [row[0] for row in result]
 
-# == EDITS ==
+def get_db_duration(hours, minutes, seconds):
+    duration = (hours * 3600) + (minutes * 60) + seconds
+    return duration
 
+# == EDITS ==
 def edit_custom_exercises(c, user_id, new_exercise, exercise_id):
     c.execute("UPDATE custom_exercises SET exercise_name = ? WHERE user_id = ? AND id = ?", (new_exercise, user_id, exercise_id))
 
@@ -323,6 +324,16 @@ def display_cardio_session(session_date, user_id):
     close_connection(conn)
     return session
 
+def display_cardio_types(c):
+    c.execute("SELECT cardio_type_name FROM cardio_types")
+    cardio_types = sorted([row[0] for row in c.fetchall()])
+    return cardio_types
+
+def display_custom_cardio(c, user_id):
+    c.execute("SELECT cardio_type FROM custom_cardio WHERE user_id = ?", (user_id))
+    custom_cardio_types = sorted([row[0] for row in c.fetchall()])
+    return custom_cardio_types
+
 # == INSERT ==
 def create_custom_exercise(user_id, exercise):
     conn, c = establish_connection()
@@ -334,8 +345,7 @@ def create_custom_cardio(user_id, cardio_type):
     c.execute("INSERT INTO custom_cardio (user_id, cardio_type) VALUES (?, ?)", (user_id, cardio_type))
     close_connection(conn)
 
-
-def insert_session(session_date, session_notes, user_id):
+def insert_workout_session(session_date, session_notes, user_id):
     conn, c = establish_connection()
     c.execute("""
             INSERT INTO workout_sessions (session_date, session_notes, user_id)
@@ -353,17 +363,11 @@ def insert_workout_log(c, session_id, exercise_id, custom_exercise_id, exercise_
     workout_log_id = c.lastrowid
     return workout_log_id
 
-def insert_sets(c, workout_log_id, set_number, reps, weight):
+def insert_workout_sets(c, workout_log_id, set_number, reps, weight):
     c.execute("""
             INSERT INTO workout_sets (workout_log_id, set_number, reps, weight)
             VALUES (?, ?, ?, ?)
         """, (workout_log_id, set_number, reps, weight))
-
-
-# == CARDIO ==
-def get_db_duration(hours, minutes, seconds):
-    duration = (hours * 3600) + (minutes * 60) + seconds
-    return duration
 
 def log_cardio_session(c, session_date, notes, user_id):
     c.execute("""
@@ -383,18 +387,7 @@ def log_cardio_log(c, cardio_session_id, cardio_type, duration, distance, distan
         distance if distance else None, distance_unit if distance_unit else None,
         intensity if intensity else None))
 
-def display_cardio_types(c):
-    c.execute("SELECT cardio_type_name FROM cardio_types")
-    cardio_types = sorted([row[0] for row in c.fetchall()])
-    return cardio_types
-
-def display_custom_cardio(c, user_id):
-    c.execute("SELECT cardio_type FROM custom_cardio WHERE user_id = ?", (user_id))
-    custom_cardio_types = sorted([row[0] for row in c.fetchall()])
-    return custom_cardio_types
-
-
-# == CLEAR SESSION ==
+# == CLEAR FLASK SESSION ==
 def clear_workout_session():
     keys = [
         'current_sets', 'session_date', 'session_notes', 
