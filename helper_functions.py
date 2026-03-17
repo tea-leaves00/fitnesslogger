@@ -110,7 +110,6 @@ def send_password_reset_email(email, token):
 
 def verify_reset_token(token):
     conn, c = establish_connection()
-    
     c.execute("""
         SELECT id, reset_token_created_at FROM users 
         WHERE reset_token = ?

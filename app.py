@@ -45,16 +45,6 @@ def load_user(user_id):
     user = User(id=data[0], first_name=data[1], last_name=data[2], username=data[3], email=data[4])
     return user
 
-@app.route('/verify/<token>')
-def verify_email(token):
-    success, message = verify_user_token(token)
-    flash(message)
-
-    if success:
-        return redirect(url_for('login'))
-    else:
-        return redirect(url_for('register'))
-
 @app.route('/register', methods=['GET', 'POST'])
 @limiter.limit("10 per minute")
 def register():
@@ -108,12 +98,21 @@ def login():
 
     return render_template('login.html')
 
+@app.route('/verify/<token>')
+def verify_email(token):
+    success, message = verify_user_token(token)
+    flash(message)
+
+    if success:
+        return redirect(url_for('login'))
+    else:
+        return redirect(url_for('register'))
+    
 @app.route('/forgot_password', methods=['GET', 'POST'])
 @limiter.limit("10 per minute")
 def forgot_password():
     if request.method == 'POST':
         email = request.form.get('email')
-        
         user = get_user_by_email(email)
         
         if user:
@@ -125,6 +124,16 @@ def forgot_password():
         return redirect(url_for('forgot_password'))
     
     return render_template('forgot_password.html')
+
+@app.route('/reset_password/<token>')
+def reset_email(token):
+    success, message = verify_reset_token(token)
+    flash(message)
+
+    if success:
+        return redirect(url_for('login'))
+    else:
+        return redirect(url_for('register'))
 
 @app.route('/reset_password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
