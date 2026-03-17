@@ -125,16 +125,6 @@ def forgot_password():
     
     return render_template('forgot_password.html')
 
-@app.route('/reset_password/<token>')
-def reset_email(token):
-    success, message = verify_reset_token(token)
-    flash(message)
-
-    if success:
-        return redirect(url_for('login'))
-    else:
-        return redirect(url_for('register'))
-
 @app.route('/reset_password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
     user_id, message = verify_reset_token(token)
