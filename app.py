@@ -120,7 +120,6 @@ def forgot_password():
             save_reset_token(email, token)
             send_password_reset_email(email, token)
         
-        print("FLASHING MESSAGE")
         flash("If an account with that email exists, you'll receive a reset link.")
         return redirect(url_for('forgot_password'))
     

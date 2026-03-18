@@ -28,6 +28,9 @@
                     <input type="hidden" name="old_exercise" value="{{ exercise.name }}">
                     <input type="hidden" name="exercise_id" value="{{ exercise.id }}">
                     <input type="text" name="new_exercise" value="{{ exercise.name }}">
+                    <button class="delete-btn" type="submit" name="action" value="delete">
+                        <img src="{{ url_for('static', filename='icons/trash.svg') }}">
+                    </button>
                 </li>
             {% endfor %}
             </ul>
