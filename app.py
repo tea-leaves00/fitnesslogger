@@ -8,6 +8,7 @@ from helper_functions import *
 from flask_wtf.csrf import CSRFProtect
 import os
 
+# == APP CONFIG ==
 app = Flask(__name__)
 env = os.environ.get('FLASK_ENV', 'development')
 if env == 'production': app.config.from_object('config.ProdConfig')
@@ -22,7 +23,7 @@ csrf = CSRFProtect(app)
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"]
+    default_limits=["500 per day", "100 per hour"]
 )
 
 # == HTTP ==
@@ -107,7 +108,22 @@ def verify_email(token):
         return redirect(url_for('login'))
     else:
         return redirect(url_for('register'))
-    
+
+@app.route('/forgot_username', methods=['GET', 'POST'])
+@limiter.limit("10 per minute")
+def forgot_username():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        username = get_username_by_email(email)
+
+        if username:
+            send_username_email(email, username)
+        
+        flash("If an account with that email exists, you'll receive an email shortly.")
+        return redirect(url_for('forgot_username'))
+
+    return render_template('forgot_username.html')
+ 
 @app.route('/forgot_password', methods=['GET', 'POST'])
 @limiter.limit("10 per minute")
 def forgot_password():
@@ -187,7 +203,6 @@ def log_workout():
     user_id = current_user.id
     
     keys = ['exercises', 'custom_exercises', 'time_based_exercises', 'time_based_custom_exercises']
-
     if any(key not in session for key in keys):
         conn, c = establish_connection()
         data = {
@@ -278,7 +293,6 @@ def log_workout():
         elif request.form.get('action') == 'reset':
             clear_sets()
             return redirect(url_for('log_workout'))
-        
         elif request.form.get('action') == 'back':
             clear_workout_session()
             return redirect(url_for('log_workout'))
@@ -450,21 +464,35 @@ def custom_exercises():
             flash('Custom exercise added successfully!')
             return redirect(url_for('custom_exercises'))
         elif request.form.get('action') == 'view_exercises':
-            custom_exercises = view_custom_exercises(user_id)
+            conn, c = establish_connection()
+            custom_exercises = display_custom_exercises(c, user_id)
+            close_connection(conn)
+            if not custom_exercises:
+                flash("No custom exercises have been created")
         elif request.form.get('action') == 'edit_exercises':
             editing_exercise = True
-            custom_exercises = view_custom_exercises(user_id)
+            conn, c = establish_connection()
+            custom_exercises = display_custom_exercises(c, user_id)
+            close_connection(conn)
+        elif request.form.get('action').startswith('delete_'):
+            action = request.form.get('action')
+            exercise_id = action.split('_')[1]
+            success = delete_custom_exercise(user_id, exercise_id)
+            if not success:
+                flash("Can't delete this exercise — it's been used in a workout.")
+            editing_exercise = True
+            conn, c = establish_connection()
+            custom_exercises = display_custom_exercises(c, user_id)
+            close_connection(conn)
         elif request.form.get('action') == 'save_changes':
             old_exercises = request.form.getlist('old_exercise')
             exercise_ids = request.form.getlist('exercise_id')
             new_exercises = request.form.getlist('new_exercise')
-            
             conn, c = establish_connection()
             for exercise_id, old_exercise, new_exercise in zip(exercise_ids, old_exercises, new_exercises):
                 if old_exercise != new_exercise:
                     edit_custom_exercises(c, user_id, new_exercise, exercise_id)
             close_connection(conn)
-
             flash("Exercises succesfully edited")
             return redirect(url_for('custom_exercises'))
 
@@ -551,6 +579,9 @@ def log_cardio():
 
         elif request.form.get('action') == 'reset':
             clear_logs()
+            return redirect(url_for('log_cardio'))
+        elif request.form.get('action') == 'back':
+            clear_cardio_session()
             return redirect(url_for('log_cardio'))
 
     return render_template('log_cardio.html', cardio_types=cardio_types, 
@@ -661,10 +692,27 @@ def custom_cardio():
             flash('Custom cardio added successfully!')
             return redirect(url_for('custom_cardio'))
         elif request.form.get('action') == 'view_custom_cardio':
-            custom_cardio = view_custom_cardio(user_id)
+            conn, c = establish_connection()
+            custom_cardio = display_custom_cardio(c, user_id)
+            close_connection(conn)
+            if not custom_cardio:
+                flash("No custom cardio types have been created")
         elif request.form.get('action') == 'edit_cardio':
             editing_cardio = True
-            custom_cardio = view_custom_cardio(user_id)
+            conn, c = establish_connection()
+            custom_cardio = display_custom_cardio(c, user_id)
+            close_connection(conn)
+        elif request.form.get('action').startswith('delete_'):
+            action = request.form.get('action')
+            cardio_id = action.split('_')[1]
+            print(user_id)
+            success = delete_custom_cardio(user_id, cardio_id)
+            if not success:
+                flash("Can't delete this cardio type — it's been used in a session.")
+            editing_cardio = True
+            conn, c = establish_connection()
+            custom_cardio = display_custom_cardio(c, user_id)
+            close_connection(conn)
         elif request.form.get('action') == 'save_changes':
             old_cardio = request.form.getlist('old_cardio')
             cardio_id = request.form.getlist('cardio_id')

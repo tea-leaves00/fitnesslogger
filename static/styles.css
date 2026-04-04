@@ -28,7 +28,6 @@ h1, h2, h3 {
 
 h1 {
     font-size: 2.5rem;
-    letter-spacing: 2px;
     margin-bottom: 1rem;
 }
 
@@ -46,11 +45,7 @@ h3 {
 p {
     font-size: 1rem;
     line-height: 1.6;
-}
-
-strong {
-    font-weight: 700;
-    color: var(--primary-color);
+    margin: 5px;
 }
 
 /* LAYOUT */
@@ -64,180 +59,10 @@ html, body {
 
 main {
     flex: 1;
-    padding: 20px;
     max-width: 1200px;
+    padding: 10px;
     margin: 0 auto;
     width: 100%;
-}
-
-/* LANDING PAGE */
-.landing-page {
-    background: var(--primary-color);
-}
-
-.landing-header {
-    position: absolute;
-    top: 0;
-    right: 0;
-    padding: 20px;
-    z-index: 10;
-}
-
-.landing-header .logout-btn {
-    background-color: transparent;
-    border: 2px solid white;
-    color: white;
-    padding: 8px 20px;
-    font-size: 0.9rem;
-}
-
-.landing-header .logout-btn:hover {
-    background-color: white;
-    color: var(--primary-color);
-}
-
-.landing-main {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    max-width: none;
-}
-
-.panel-container {
-    display: flex;
-    width: 100%;
-    height: 100%;
-    min-height: calc(100vh - 60px);
-}
-
-.panel {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none;
-    color: #E6E6FA;
-    transition: all 0.3s ease;
-    padding: 40px;
-    margin: 0;
-    border-radius: 0;
-}
-
-.panel-weightlifting {
-    background: linear-gradient(135deg, #080842 0%, #1a1a6e 100%);
-    border-right: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.panel-cardio {
-    background: linear-gradient(135deg, #1a1a6e 0%, #080842 100%);
-}
-
-.panel:hover {
-    flex: 1.1;
-    background: var(--hover-color);
-}
-
-.panel:hover .panel-title,
-.panel:hover .panel-subtitle {
-    color: var(--accent-color);
-}
-
-.panel-title {
-    font-size: 3rem;
-    font-weight: bold;
-    text-transform: uppercase;
-    letter-spacing: 4px;
-    margin-bottom: 15px;
-    color: #f0f0fc;
-    transition: color 0.3s ease;
-}
-
-.panel-subtitle {
-    font-size: 1.2rem;
-    letter-spacing: 1px;
-    color: #E6E6FA;
-    transition: color 0.3s ease;
-}
-
-/* HEADERS */
-.section-header {
-    background-color: var(--primary-color);
-    padding: 10px 20px;
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-}
-
-.header-actions {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
-.switch-btn {
-    background-color: transparent;
-    border: 1px solid white;
-    color: white;
-    padding: 6px 15px;
-    font-size: 0.85rem;
-    border-radius: 4px;
-    margin: 0;
-}
-
-.switch-btn:hover {
-    background-color: white;
-    color: var(--primary-color);
-}
-
-.section-header .logout-btn {
-    background-color: transparent;
-    border: 1px solid var(--accent-color);
-    color: var(--accent-color);
-    padding: 6px 15px;
-    font-size: 0.85rem;
-    margin: 0;
-}
-
-.section-header .logout-btn:hover {
-    background-color: var(--accent-color);
-    color: var(--primary-color);
-}
-
-/* NAV */
-nav {
-    background-color: var(--primary-color);
-    padding: 10px 0;
-    text-align: center;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-nav ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-nav ul li {
-    display: inline;
-    margin: 0 15px;
-}
-
-nav ul li a {
-    text-decoration: none;
-    color: white;
-    font-size: 1.1rem;
-    padding: 10px 15px;
-    background-color: transparent;
-    transition: color 0.3s ease-in-out;
-    margin: 0;
-}
-
-nav ul li a:hover {
-    color: var(--accent-color);
-    background-color: transparent;
 }
 
 /* LINKS */
@@ -249,48 +74,32 @@ a {
     text-decoration: none;
     display: inline-block;
     margin: 10px 5px;
-    transition: background-color 0.3s ease-in-out;
+    transition: background-color 0.2s ease-in-out;
 }
 
 a:hover {
     background-color: var(--hover-color);
 }
 
-a:focus {
-    outline: 2px solid var(--accent-color);
-    outline-offset: 2px;
-}
-
-/* FOOTER */
-footer {
-    background: var(--primary-color);
-    color: white;
-    text-align: center;
-    padding: 15px 10px;
-}
-
-footer p {
-    color: white;
-    margin: 0;
-}
 
 /* FORMS */
 form {
     text-align: center;
-    margin: 20px 0;
 }
 
 label {
-    display: inline-block;
+    display: block;
     color: var(--primary-color);
     font-weight: 600;
-    margin: 8px 10px 8px 0;
+    margin: 5px 10px;
     font-size: 1rem;
 }
 
 input, select {
-    padding: 8px 12px;
-    border: 1px solid var(--primary-color);
+    padding: 6px 10px;
+    max-width: 300px;
+    border: 1.5px solid var(--primary-color);
+    color: var(--primary-color);
     border-radius: 4px;
     font-size: 1rem;
     transition: border-color 0.2s, box-shadow 0.2s;
@@ -304,14 +113,6 @@ input:focus, select:focus {
 
 input::placeholder {
     color: var(--text-muted);
-}
-
-.input-sm {
-    width: 60px;
-}
-
-.input-md {
-    width: 80px;
 }
 
 input[type="checkbox"] {
@@ -366,6 +167,50 @@ input[type="date"] {
     cursor: pointer;
 }
 
+/* random specific form stuff */
+.weight_input {
+    margin-top: 23px;
+}
+
+.weight_input,
+.reps_input {
+    width: 100px;
+}
+
+
+/* NAV */
+nav {
+    background-color: var(--primary-color);
+    padding: 10px 0;
+    text-align: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+nav ul li {
+    display: inline;
+    margin: 0 10px;
+}
+
+nav ul li a {
+    text-decoration: none;
+    color: white;
+    font-size: 1.1rem;
+    background-color: transparent;
+    transition: color 0.3s ease-in-out;
+    margin: 0;
+}
+
+nav ul li a:hover {
+    color: var(--accent-color);
+    background-color: transparent;
+}
+
 /* BUTTONS */
 button {
     background-color: var(--primary-color);
@@ -394,28 +239,30 @@ button:disabled {
     opacity: 0.6;
 }
 
+.delete_button {
+    background-color: var(--light-bg);
+    padding: 5px;
+}
+
 /* TABLES */
 table {
-    width: 100%;
     border-collapse: collapse;
     margin: 20px auto;
-    max-width: 1200px;
     background-color: white;
 }
 
 th, td {
-    padding: 12px 10px;
-    text-align: left;
-    border: 1px solid var(--primary-color);
+    padding: 5px 10px 10px 10px;
+    border: 1px solid var(--hover-color);
+    text-align: center;
 }
 
 th {
+    padding: 10px;
     background-color: var(--primary-color);
     color: white;
     font-weight: bold;
     text-transform: uppercase;
-    font-size: 0.9rem;
-    letter-spacing: 0.5px;
 }
 
 tbody tr:nth-child(even) {
@@ -423,7 +270,8 @@ tbody tr:nth-child(even) {
 }
 
 tbody tr:hover {
-    background-color: #e8e8f4;
+    background-color: #ebebf5;
+    transition: background-color 0.2s ease;
 }
 
 td input, td select {
@@ -431,63 +279,71 @@ td input, td select {
     max-width: 100%;
 }
 
-.exercise-separator {
-    border-top: 7px solid var(--primary-color) !important;
-}
-
-.exercise-separator td {
-    padding-top: 20px;
-    font-weight: 600;
-    color: #222;
-}
-
 /* LISTS */
 main ul {
-    list-style: disc;
-    padding-left: 40px;
-    text-align: left;
+    text-align: center;
     max-width: 600px;
     margin: 15px auto;
+    padding: 0px;
+    list-style: none;
 }
 
 main ul li {
     color: var(--primary-color);
     padding: 8px 0;
-    font-size: 1rem;
-    line-height: 1.5;
+    font-size: 1.1rem;
+}
+
+.custom_exercise_list li,
+.custom_cardio_list li {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.custom_exercise_list li input[type="text"],
+.custom_cardio_list li input[type="text"] {
+    display: inline;
+    margin: 0;
+    width: auto;
 }
 
 /* FLASH MESSAGES */
-.flash-message {
+.flash_message {
     color: var(--primary-color);
     font-weight: bold;
     padding: 12px 20px;
     margin: 15px auto;
     max-width: 600px;
-    background-color: #e8e8f4;
+    background-color: #ebebf5;
     border-left: 4px solid var(--primary-color);
     border-radius: 4px;
     text-align: center;
 }
 
-/* FORM SPECIFIC CLASSES */
-.date_and_notes {
-    color: var(--primary-color);
-    font-weight: bold;
+/* FOOTER */
+footer {
+    background: var(--primary-color);
+    color: white;
+    text-align: center;
+    padding: 15px 10px;
 }
 
-#intensity-value {
+footer p {
+    color: white;
+    margin: 0;
+}
+
+/* FORM SPECIFIC CLASSES */
+#intensity_value {
     display: inline-block;
     min-width: 25px;
     font-size: 1.2rem;
     color: var(--primary-color);
 }
 
-#set-number-display {
-    display: inline-block;
-}
-
-#sets-input {
+#sets_input {
     display: none;
     width: 60px;
 }
@@ -524,7 +380,6 @@ span {
 main form label {
     display: block;
     text-align: center;
-    margin-top: 15px;
 }
 
 main form input[type="text"],
@@ -533,22 +388,148 @@ main form input[type="email"] {
     display: block;
     margin: 8px auto;
     width: 100%;
-    max-width: 300px;
+}
+
+/* LANDING PAGE */
+.landing_page {
+    background: var(--primary-color);
+    position: relative;
+}
+
+.landing_header {
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 15px;
+    z-index: 10;
+}
+
+.landing_header .logout_button {
+    background-color: transparent;
+    border: 2px solid white;
+    color: white;
+    padding: 8px 20px;
+    font-size: 1rem;
+}
+
+.landing_header .logout_button:hover {
+    background-color: white;
+    color: var(--primary-color);
+}
+
+.landing_main {
+    display: flex;
+    flex: 1;
+    padding: 0;
+    max-width: none;
+}
+
+.panel_container {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+.panel {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: #E6E6FA;
+    transition: flex 0.3s ease;
+    padding: 40px;
+    margin: 0;
+    border-radius: 0;
+}
+
+.panel_weightlifting {
+    background: linear-gradient(45deg, #080842 0%, #1a1a6e 100%);
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.panel_cardio {
+    background: linear-gradient(45deg, #1a1a6e 0%, #080842 100%);
+}
+
+.panel:hover {
+    flex: 1.1;
+    background: var(--hover-color);
+}
+
+.panel:hover .panel_title {
+    color: var(--accent-color);
+}
+
+.panel_title {
+    font-size: 3rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    margin-bottom: 15px;
+    color: #f0f0fc;
+    transition: color 0.3s ease;
+}
+
+
+/* HEADERS */
+.section_header {
+    background-color: var(--primary-color);
+    padding: 10px 20px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.header_actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.switch_button {
+    background-color: transparent;
+    border: 1px solid white;
+    color: white;
+    padding: 6px 15px;
+    font-size: 0.85rem;
+    border-radius: 4px;
+    margin: 0;
+}
+
+.switch_button:hover {
+    background-color: white;
+    color: var(--primary-color);
+}
+
+.section_header .logout_button {
+    background-color: transparent;
+    border: 1px solid var(--accent-color);
+    color: var(--accent-color);
+    padding: 6px 15px;
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+.section_header .logout_button:hover {
+    background-color: var(--accent-color);
+    color: var(--primary-color);
 }
 
 /* VIEW WORKOUT PAGE */
-.workout-display {
+.workout_display {
     max-width: 700px;
     margin: 0 auto;
     text-align: left;
 }
 
-.workout-display > p {
+.workout_display > p {
     text-align: left;
 }
 
-.workout-display > strong > p,
-.workout-display strong p {
+.workout_display > strong > p,
+.workout_display strong p {
     font-size: 1.4rem;
     text-align: left;
     background-color: var(--primary-color);
@@ -558,18 +539,18 @@ main form input[type="email"] {
     margin: 0 0 5px 0;
 }
 
-.workout-display > p:nth-of-type(1) {
+.workout_display > p:nth-of-type(1) {
     background-color: var(--light-bg);
     padding: 10px 20px;
     border-left: 4px solid var(--accent-color);
     margin-bottom: 20px;
 }
 
-.workout-display > p:-webkit-any(:contains("-----------------"), :contains("-------------------------------")) {
+.workout_display > p:-webkit-any(:contains("-----------------"), :contains("-------------------------------")) {
     display: none;
 }
 
-.workout-display strong p:not(:first-child) {
+.workout_display strong p:not(:first-child) {
     background-color: var(--hover-color);
     color: white;
     padding: 10px 15px;
@@ -578,21 +559,21 @@ main form input[type="email"] {
     font-size: 1.1rem;
 }
 
-.workout-display > p:has(+ strong),
-.workout-display p[class=""] {
+.workout_display > p:has(+ strong),
+.workout_display p[class=""] {
     padding-left: 15px;
     color: var(--text-muted);
     font-style: italic;
 }
 
-.workout-display > p:last-of-type,
-.workout-display p:not(:empty) {
+.workout_display > p:last-of-type,
+.workout_display p:not(:empty) {
     padding: 8px 15px 8px 30px;
     margin: 2px 0;
     border-bottom: 1px solid var(--border-color);
 }
 
-.workout-card {
+.workout_card {
     background: white;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -601,7 +582,7 @@ main form input[type="email"] {
     max-width: 700px;
 }
 
-.workout-card .session-date {
+.workout_card .session_date {
     font-size: 1.3rem;
     color: var(--primary-color);
     border-bottom: 2px solid var(--primary-color);
@@ -609,7 +590,7 @@ main form input[type="email"] {
     margin-bottom: 15px;
 }
 
-.workout-card .session-notes {
+.workout_card .session_notes {
     background-color: var(--light-bg);
     padding: 10px 15px;
     border-radius: 4px;
@@ -618,7 +599,7 @@ main form input[type="email"] {
     color: var(--text-muted);
 }
 
-.workout-card .exercise-block {
+.workout_card .exercise_block {
     margin: 20px 0;
     padding: 15px;
     background-color: #fafafa;
@@ -626,21 +607,21 @@ main form input[type="email"] {
     border-radius: 0 8px 8px 0;
 }
 
-.workout-card .exercise-name {
+.workout_card .exercise_name {
     font-size: 1.1rem;
     font-weight: bold;
     color: var(--primary-color);
     margin-bottom: 5px;
 }
 
-.workout-card .exercise-notes {
+.workout_card .exercise_notes {
     font-size: 0.9rem;
     color: var(--text-muted);
     font-style: italic;
     margin-bottom: 10px;
 }
 
-.workout-card .set-row {
+.workout_card .set_row {
     display: flex;
     justify-content: space-between;
     padding: 8px 10px;
@@ -649,53 +630,53 @@ main form input[type="email"] {
     border-radius: 4px;
 }
 
-.workout-card .set-number {
+.workout_card .set_number {
     font-weight: 600;
     color: var(--primary-color);
 }
 
-.workout-card .set-details {
+.workout_card .set_details {
     color: #333;
 }
 
 /* VIEW/EDIT PAGE */
-.session-header {
+.session_header {
     border-bottom: 2px solid var(--primary-color);
     padding-bottom: 10px;
     margin-bottom: 20px;
 }
 
-.exercise-block {
+.exercise_block {
     margin: 20px 0;
     padding: 15px;
     background-color: var(--light-bg);
     border-radius: 8px;
 }
 
-.set-row {
+.set_row {
     padding: 5px 0;
     margin-left: 20px;
 }
 
-.workout-separator {
+.workout_separator {
     border: none;
     border-top: 2px dashed var(--border-color);
     margin: 20px 0;
 }
 
 /* UTILITY CLASSES */
-.text-center {
+.text_center {
     text-align: center;
 }
 
-.text-left {
+.text_left {
     text-align: left;
 }
 
-.mt-1 { margin-top: 10px; }
-.mt-2 { margin-top: 20px; }
-.mb-1 { margin-bottom: 10px; }
-.mb-2 { margin-bottom: 20px; }
+.mt_1 { margin-top: 10px; }
+.mt_2 { margin-top: 20px; }
+.mb_1 { margin-bottom: 10px; }
+.mb_2 { margin-bottom: 20px; }
 
 .hidden {
     display: none;
@@ -717,12 +698,12 @@ main form input[type="email"] {
         margin: 10px 0;
     }
     
-    .section-header {
+    .section_header {
         flex-direction: column;
         gap: 10px;
     }
     
-    .header-actions {
+    .header_actions {
         flex-wrap: wrap;
         justify-content: center;
     }
@@ -744,7 +725,7 @@ main form input[type="email"] {
         font-size: 0.9rem;
     }
     
-    .panel-container {
+    .panel_container {
         flex-direction: column;
     }
     
@@ -752,16 +733,16 @@ main form input[type="email"] {
         min-height: 50vh;
     }
     
-    .panel-weightlifting {
+    .panel_weightlifting {
         border-right: none;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
     
-    .panel-title {
+    .panel_title {
         font-size: 2rem;
     }
     
-    .panel-icon {
+    .panel_icon {
         font-size: 3rem;
     }
 }

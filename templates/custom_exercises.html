@@ -22,14 +22,14 @@
     {% if editing_exercise %}
         <form action="/custom_exercises" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <ul>
+            <ul class="custom_exercise_list">
             {% for exercise in custom_exercises %}
                 <li>
                     <input type="hidden" name="old_exercise" value="{{ exercise.name }}">
                     <input type="hidden" name="exercise_id" value="{{ exercise.id }}">
                     <input type="text" name="new_exercise" value="{{ exercise.name }}">
-                    <button class="delete-btn" type="submit" name="action" value="delete">
-                        <img src="{{ url_for('static', filename='icons/trash.svg') }}">
+                    <button class="delete_button" type="submit" name="action" value="delete_{{ exercise.id }}">
+                        <img src="{{ url_for('static', filename='icons/trash.svg') }}" width="15" height="15">
                     </button>
                 </li>
             {% endfor %}
@@ -37,16 +37,16 @@
             <button type="submit" name="action" value="save_changes">Save Changes</button>
         </form>
     {% else %}
-        {% for exercise in custom_exercises %}
         <ul>
+        {% for exercise in custom_exercises %}
             <li>{{ exercise.name }}</li>
-        </ul>
         {% endfor %}
+        </ul>
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" name="action" value="edit_exercises">Edit exercises</button>
+        </form>
     {% endif %}
-    <form method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" name="action" value="edit_exercises">Edit exercises</button>
-    </form>
 {% endif %}
 {% endblock %}
 

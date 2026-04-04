@@ -13,7 +13,7 @@
         {% with messages = get_flashed_messages() %}
             {% if messages %}
                 {% for message in messages %}
-                    <div class="flash-message">{{ message }}</div>
+                    <div class="flash_message">{{ message }}</div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
@@ -28,8 +28,10 @@
 
             <button type="submit">Login</button>
         </form>
-        <p>Forgot Password?<a href="{{ url_for('forgot_password') }}">Reset Here</a></p>
-        <p>Don't have an account?<a href="{{ url_for('register') }}">Register here</a></p>
+        <br><br><br>
+        <p style="margin: 3px 0px 3px 14px">Forgot Username?<a href="{{ url_for('forgot_username') }}">Click Here</a></p>
+        <p style="margin: 3px 0px 3px 15px">Forgot Password?<a href="{{ url_for('forgot_password') }}">Reset Here</a></p>
+        <p style="margin: 3px 0px 3px 5px">Don't have an account?<a href="{{ url_for('register') }}">Register Here</a></p>
     </main>
 </body>
 </html>

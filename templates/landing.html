@@ -7,18 +7,18 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 
-<body class="landing-page">
-    <header class="landing-header">
-        <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+<body class="landing_page">
+    <header class="landing_header">
+        <a href="{{ url_for('logout') }}" class="logout_button">Logout</a>
     </header>
 
-    <main class="landing-main">
-        <div class="panel-container">
-            <a href="{{ url_for('weightlifting_index') }}" class="panel panel-weightlifting">
-                <span class="panel-title">Weightlifting</span>
+    <main class="landing_main">
+        <div class="panel_container">
+            <a href="{{ url_for('weightlifting_index') }}" class="panel panel_weightlifting">
+                <span class="panel_title">Weightlifting</span>
             </a>
-            <a href="{{ url_for('cardio_index') }}" class="panel panel-cardio">
-                <span class="panel-title">Cardio</span>
+            <a href="{{ url_for('cardio_index') }}" class="panel panel_cardio">
+                <span class="panel_title">Cardio</span>
             </a>
         </div>
     </main>

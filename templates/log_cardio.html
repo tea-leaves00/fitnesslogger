@@ -5,7 +5,6 @@
 {% if date_selection %}
 <form action="/log_cardio" method="POST">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <h3>Select workout date and enter any notes for the session</h2>
     <label for="session_date" class="date_and_notes">Session Date</label>
     <input type="date" id="session_date" class="date_and_notes" name="session_date" value="{{ session.get('session_date', '') }}" required>
     <label for="session_notes" class="date_and_notes">Session Notes (optional)</label>
@@ -79,7 +78,7 @@
                 </select>
             </td>
             <td>
-                <strong><span id="intensity-value">5</span></strong>
+                <strong><span id="intensity_value">5</span></strong>
                 <input
                     type="range"
                     name="intensity"
@@ -92,6 +91,7 @@
         </tr>
     </table>
 
+    <button type="submit" name="action" value="back">Back to Date Selection</button>
     <button type="submit" name="action" value="add_log">Add Log</button>
     <button type="submit" name="action" value="finish_session">Finish Session</button>
     <br>
@@ -103,7 +103,7 @@
 {% block scripts %}
 <script>
     const intensitySlider = document.getElementById("intensity");
-    const intensityValue = document.getElementById("intensity-value");
+    const intensityValue = document.getElementById("intensity_value");
 
     if (intensitySlider && intensityValue) {
         intensityValue.textContent = intensitySlider.value;

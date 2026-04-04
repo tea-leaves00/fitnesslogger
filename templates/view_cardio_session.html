@@ -28,13 +28,21 @@
             <strong><p>{{ cardio_type }}</p></strong>
         {% endif %}
 
-        {% set hours = duration // 3600 %}
-        {% set remaining = duration % 3600 %}
-        {% set minutes = remaining // 60 %}
-        {% set seconds = remaining % 60 %}
+        {% if duration %}
+            {% set hours = duration // 3600 %}
+            {% set remaining = duration % 3600 %}
+            {% set minutes = remaining // 60 %}
+            {% set seconds = remaining % 60 %}
+            <p>Duration: {{ hours }}h {{ minutes }}m {{ seconds }}s</p>
+        {% else %}
+            <p>Duration: N/A</p>
+        {% endif %}
 
-        <p>Duration: {{ hours }}h {{ minutes }}m {{ seconds }}s</p>
-        <p>Distance: {{ distance }} {{ distance_unit}}</p>
+        {% if distance %}
+            <p>Distance: {{ distance }} {{ distance_unit}}</p>
+        {% else %}
+            <p>Distance: N/A</p>
+        {% endif %}
         <p>Intensity (scale 1-10): {{ intensity }}</p>
 
         
@@ -43,9 +51,5 @@
 
 {% elif cardio_searched %}
     <p>No session found</p>
-
 {%  endif %}
-
-
-
 {% endblock %}

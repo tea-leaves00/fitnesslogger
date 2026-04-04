@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 
 {% block header %}
-<header class="section-header">
-    <div class="header-actions">
-        <a href="{{ url_for('cardio_index') }}" class="switch-btn">Cardio</a>
-        <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+<header class="section_header">
+    <div class="header_actions">
+        <a href="{{ url_for('cardio_index') }}" class="switch_button">Cardio</a>
+        <a href="{{ url_for('logout') }}" class="logout_button">Logout</a>
     </div>
 </header>
 {% endblock %}
@@ -25,7 +25,7 @@
 {% with messages = get_flashed_messages() %}
     {% if messages %}
         {% for message in messages %}
-        <div class="flash-message">{{ message }}</div>
+        <div class="flash_message">{{ message }}</div>
         {% endfor %}
     {% endif %}
 {% endwith %}

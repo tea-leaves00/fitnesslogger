@@ -22,14 +22,14 @@
     {% if editing_cardio %}
         <form action="/custom_cardio" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <ul>
+            <ul class="custom_cardio_list">
             {% for cardio in custom_cardio %}
                 <li>
                     <input type="hidden" name="old_cardio" value="{{ cardio.name }}">
                     <input type="hidden" name="cardio_id" value="{{ cardio.id }}">
                     <input type="text" name="new_cardio" value="{{ cardio.name }}">
-                    <button class="delete-btn" type="submit" name="action" value="delete">
-                        <img src="{{ url_for('static', filename='icons/trash.svg') }}">
+                    <button class="delete_button" type="submit" name="action" value="delete_{{ cardio.id }}">
+                        <img src="{{ url_for('static', filename='icons/trash.svg') }}" width="15" height="15">
                     </button>
                 </li>
             {% endfor %}
@@ -37,16 +37,16 @@
             <button type="submit" name="action" value="save_changes">Save Changes</button>
         </form>
     {% else %}
+        <ul>
         {% for cardio in custom_cardio %}
-            <ul>
-                <li>{{ cardio.name }}</li>
-            </ul>
+            <li>{{ cardio.name }}</li>
         {% endfor %}
+        </ul>
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" name="action" value="edit_cardio">Edit</button>
+        </form>
     {% endif %}
-    <form method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" name="action" value="edit_cardio">Edit</button>
-    </form>
 {% endif %}
 {% endblock %}
 

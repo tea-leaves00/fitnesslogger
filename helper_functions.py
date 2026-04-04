@@ -144,6 +144,19 @@ def clear_reset_token(user_id):
     c.execute("UPDATE users SET reset_token = NULL, reset_token_created_at = NULL WHERE id = ?", (user_id,))
     close_connection(conn)
 
+def send_username_email(email, username):
+    params = {
+        "from": "Fitness Logger <noreply@fitnesslogger.app>",
+        "to": [email],
+        "subject": "Forgot Username",
+        "html": f"""
+            <h2>Forgot Username Request</h2>
+            <p>Hello, your username is {username}. 
+            Click <a href="https://www.fitnesslogger.app/login">this link</a> to be redirected back to the login page.</p>
+        """,
+    }
+    resend.Emails.send(params)
+
 # == USERS == 
 def create_user(first_name, last_name, username, password_hash, email):
     try:
@@ -181,6 +194,16 @@ def get_user_by_email(email):
     else: 
         return False
 
+def get_username_by_email(email):
+    conn, c = establish_connection()
+    c.execute("SELECT username FROM users WHERE email = ?", (email,))
+    data = c.fetchone()
+    close_connection(conn)
+    if data:  
+        return data[0]
+    else: 
+        return None
+    
 # == SELECT ==
 def get_exercise_id(c, exercise_name):
     c.execute("SELECT exercise_id FROM exercises WHERE exercise_name = ?", (exercise_name,))
@@ -241,11 +264,6 @@ def display_exercises(c):
     exercises = sorted([row[1] for row in c.fetchall()])
     return exercises
 
-def display_custom_exercises(c, user_id):
-    c.execute("SELECT id, exercise_name FROM custom_exercises WHERE user_id = ?", (user_id,))
-    exercises = sorted([row[1] for row in c.fetchall()])
-    return exercises
-
 def display_exercises_by_muscle_group():
     conn, c = establish_connection()
     c.execute("""
@@ -285,20 +303,14 @@ def display_workout(session_date, user_id):
     close_connection(conn)
     return workouts
 
-def view_custom_exercises(user_id):
-    conn, c = establish_connection()
-    c.execute("SELECT id, exercise_name FROM custom_exercises WHERE user_id = ?", (user_id,))
-    data = c.fetchall()
+def display_custom_exercises(c, user_id):
+    data = c.execute("SELECT id, exercise_name FROM custom_exercises WHERE user_id = ?", (user_id,)).fetchall()
     custom_exercises = [{"id": row[0], "name": row[1]} for row in data]
-    close_connection(conn)
     return custom_exercises
 
-def view_custom_cardio(user_id):
-    conn, c = establish_connection()
-    c.execute("SELECT id, cardio_type FROM custom_cardio WHERE user_id = ?", (user_id,))
-    data = c.fetchall()
+def display_custom_cardio(c, user_id):
+    data = c.execute("SELECT id, cardio_type FROM custom_cardio WHERE user_id = ?", (user_id,)).fetchall()
     custom_cardio = [{"id": row[0], "name": row[1]} for row in data]
-    close_connection(conn)
     return custom_cardio
 
 def display_cardio_session(session_date, user_id):
@@ -327,11 +339,6 @@ def display_cardio_types(c):
     c.execute("SELECT cardio_type_name FROM cardio_types")
     cardio_types = sorted([row[0] for row in c.fetchall()])
     return cardio_types
-
-def display_custom_cardio(c, user_id):
-    c.execute("SELECT cardio_type FROM custom_cardio WHERE user_id = ?", (user_id))
-    custom_cardio_types = sorted([row[0] for row in c.fetchall()])
-    return custom_cardio_types
 
 # == INSERT ==
 def create_custom_exercise(user_id, exercise):
@@ -385,6 +392,27 @@ def log_cardio_log(c, cardio_session_id, cardio_type, duration, distance, distan
         """, (cardio_session_id, cardio_type_id, duration, 
         distance if distance else None, distance_unit if distance_unit else None,
         intensity if intensity else None))
+
+# == DELETE ==
+def delete_custom_exercise(user_id, exercise_id):
+    conn, c = establish_connection()
+    try:
+        c.execute("DELETE FROM custom_exercises WHERE user_id = ? AND id = ?",(user_id, exercise_id))
+        close_connection(conn)
+        return True
+    except sqlite3.IntegrityError:
+        conn.close()
+        return False
+    
+def delete_custom_cardio(user_id, cardio_id):
+    conn, c = establish_connection()
+    try:
+        c.execute("DELETE FROM custom_cardio WHERE user_id = ? AND id = ?",(user_id, cardio_id))
+        close_connection(conn)
+        return True
+    except sqlite3.IntegrityError:
+        conn.close()
+        return False   
 
 # == CLEAR FLASK SESSION ==
 def clear_workout_session():
