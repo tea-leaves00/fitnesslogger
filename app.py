@@ -312,7 +312,7 @@ def log_workout():
                 for set_data in session['current_sets']:
                     # Only create workout_logs entry once per exercise
                     if set_data['exercise'] not in exercises_processed:
-                        if set_data['exercise'] in session['custom_exercises']:
+                        if set_data['exercise'] in [exercise['name'] for exercise in session['custom_exercises']]:
                             exercise_id = None
                             custom_exercise_id = get_custom_exercise_id(c, set_data['exercise'], user_id)
                         else:
