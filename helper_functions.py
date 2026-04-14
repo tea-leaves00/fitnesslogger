@@ -9,14 +9,16 @@ resend.api_key = Config.RESEND_API_KEY
 
 # == CONNECT AND CLOSE ==
 def establish_connection():
-    conn = sqlite3.connect(DB_PATH, timeout=10.0)
-    conn.execute("PRAGMA foreign_keys = ON")
-    conn.execute("PRAGMA journal_mode=WAL")
-    c = conn.cursor()
-    return conn, c
+    try:
+        conn = sqlite3.connect(DB_PATH, timeout=10.0)
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute("PRAGMA journal_mode=WAL")
+        c = conn.cursor()
+        return conn, c
+    except sqlite3.Error:
+        return None, None
 
 def close_connection(conn):
-    conn.commit()
     conn.close()
 
 # == EMAIL VERIFICATION & RESET == 
@@ -25,12 +27,20 @@ def generate_verification_token():
 
 def save_verification_token(email, token):
     conn, c = establish_connection()
-    c.execute("""
-        UPDATE users 
-        SET verification_token = ?, token_created_at = CURRENT_TIMESTAMP
-        WHERE email = ?
-    """, (token, email))
-    close_connection(conn)
+    if conn is None: return False
+    try:
+        c.execute("""
+            UPDATE users 
+            SET verification_token = ?, token_created_at = CURRENT_TIMESTAMP
+            WHERE email = ?
+        """, (token, email))
+        conn.commit()
+        return True
+    except sqlite3.Error:
+        conn.rollback()
+        return False
+    finally:
+        close_connection(conn)
 
 def send_verification_email(email, token):
     verification_link = f"{Config.BASE_URL}/verify/{token}"
@@ -77,18 +87,27 @@ def verify_user_token(token):
         SET verified = 1, verification_token = NULL, token_created_at = NULL
         WHERE id = ?
     """, (user_id,))
+    conn.commit()
     close_connection(conn)
     
     return True, "Account verified"
 
 def save_reset_token(email, token):
     conn, c = establish_connection()
-    c.execute("""
-        UPDATE users 
-        SET reset_token = ?, reset_token_created_at = CURRENT_TIMESTAMP
-        WHERE email = ?
-    """, (token, email))
-    close_connection(conn)
+    if conn is None: return None
+    try:
+        c.execute("""
+            UPDATE users 
+            SET reset_token = ?, reset_token_created_at = CURRENT_TIMESTAMP
+            WHERE email = ?
+        """, (token, email))
+        conn.commit()
+        return True
+    except sqlite3.Error:
+        conn.rollback()
+        return False
+    finally:
+        close_connection(conn)
 
 def send_password_reset_email(email, token):
     reset_link = f"{Config.BASE_URL}/reset_password/{token}"
@@ -136,13 +155,28 @@ def verify_reset_token(token):
 
 def update_password(user_id, password_hash):
     conn, c = establish_connection()
-    c.execute("UPDATE users SET password = ? WHERE id = ?", (password_hash, user_id))
-    close_connection(conn)
+    if conn is None: return None
+    try:
+        c.execute("UPDATE users SET password = ? WHERE id = ?", (password_hash, user_id))
+        conn.commit()
+    except sqlite3.Error:
+        conn.rollback()
+        return False
+    finally:
+        close_connection(conn)
 
 def clear_reset_token(user_id):
     conn, c = establish_connection()
-    c.execute("UPDATE users SET reset_token = NULL, reset_token_created_at = NULL WHERE id = ?", (user_id,))
-    close_connection(conn)
+    if conn is None: return None
+    try:
+        c.execute("UPDATE users SET reset_token = NULL, reset_token_created_at = NULL WHERE id = ?", (user_id,))
+        conn.commit()
+        return True
+    except sqlite3.Error:
+        conn.rollback()
+        return False
+    finally:
+        close_connection(conn)
 
 def send_username_email(email, username):
     params = {
@@ -159,50 +193,73 @@ def send_username_email(email, username):
 
 # == USERS == 
 def create_user(first_name, last_name, username, password_hash, email):
+    conn, c = establish_connection()
+    if conn is None: return None
     try:
-        conn, c = establish_connection()
         c.execute("INSERT into users (first_name, last_name, username, password, email) VALUES (?, ?, ?, ?, ?)"
                     ,(first_name, last_name, username, password_hash, email))
         conn.commit()
-        close_connection(conn)
         return True
-    except sqlite3.IntegrityError:
-        close_connection(conn)
+    except sqlite3.Error:
+        conn.rollback()
         return False
+    finally:
+        close_connection(conn)
     
 def get_user_by_id(user_id):
     conn, c = establish_connection()
-    c.execute("SELECT id, first_name, last_name, username, email FROM users WHERE id = ?", (user_id,))
-    data = c.fetchone()
-    close_connection(conn)
-    return data
-
+    if conn is None: return None
+    try:
+        c.execute("SELECT id, first_name, last_name, username, email FROM users WHERE id = ?", (user_id,))
+        data = c.fetchone()
+        return data
+    except sqlite3.Error:
+        return None
+    finally:
+        close_connection(conn)
+    
 def get_user_by_username(username):
     conn, c = establish_connection()
-    c.execute("SELECT id, first_name, last_name, username, email, password, verified FROM users WHERE username = ?", (username,))
-    data = c.fetchone()
-    close_connection(conn)
-    return data
-
+    if conn is None: return None
+    try: 
+        c.execute("SELECT id, first_name, last_name, username, email, password, verified FROM users WHERE username = ?", (username,))
+        data = c.fetchone()
+        return data
+    except sqlite3.Error:
+        return None
+    finally:
+        close_connection(conn)
+    
 def get_user_by_email(email):
     conn, c = establish_connection()
-    c.execute("SELECT id FROM users WHERE email = ?", (email,))
-    data = c.fetchone()
-    close_connection(conn)
-    if data:  
-        return True
-    else: 
-        return False
+    if conn is None: return None
+    try:
+        c.execute("SELECT id FROM users WHERE email = ?", (email,))
+        data = c.fetchone()
+        if data:  
+            return True
+        else: 
+            return False
+    except sqlite3.Error:
+        return None
+    finally:
+        close_connection(conn)
 
 def get_username_by_email(email):
     conn, c = establish_connection()
-    c.execute("SELECT username FROM users WHERE email = ?", (email,))
-    data = c.fetchone()
-    close_connection(conn)
-    if data:  
-        return data[0]
-    else: 
+    if conn is None: return None
+    try:
+        c.execute("SELECT username FROM users WHERE email = ?", (email,))
+        data = c.fetchone()
+        if data:  
+            return data[0]
+        else: 
+            return None
+    except:
         return None
+    finally:
+        close_connection(conn)
+    
     
 # == SELECT ==
 def get_exercise_id(c, exercise_name):
@@ -227,17 +284,21 @@ def get_cardio_session_ids(c, session_date, user_id):
 
 def check_is_time_based(exercises, exercise_name, user_id):
     conn, c = establish_connection()
-    if exercise_name in exercises:
-        c.execute("SELECT is_time_based FROM exercises WHERE exercise_name = ?", exercise_name)
-    else:
-        c.execute("SELECT is_time_based FROM custom_exercises WHERE exercise_name = ? and user_id = ?", (exercise_name, user_id))
-    result = c.fetchone()[0]
-    close_connection(conn)
-
-    if result == 0:
-        return False
-    else:
-        return True
+    if conn is None: return None
+    try:
+        if exercise_name in exercises:
+            c.execute("SELECT is_time_based FROM exercises WHERE exercise_name = ?", exercise_name)
+        else:
+            c.execute("SELECT is_time_based FROM custom_exercises WHERE exercise_name = ? and user_id = ?", (exercise_name, user_id))
+        result = c.fetchone()[0]
+        if result == 0:
+            return False
+        else:
+            return True
+    except:
+        return None
+    finally:
+        close_connection(conn)
 
 def get_time_based_exercises(c):
     result = c.execute("SELECT exercise_name FROM exercises WHERE is_time_based = 1").fetchall()
@@ -264,22 +325,9 @@ def display_exercises(c):
     exercises = sorted([row[1] for row in c.fetchall()])
     return exercises
 
-def display_exercises_by_muscle_group():
-    conn, c = establish_connection()
-    c.execute("""
-            SELECT exercises.exercise_name, muscle_groups.muscle_group_name
-            FROM exercise_muscle_groups
-            JOIN exercises ON exercise_muscle_groups.exercise_id = exercises.exercise_id
-            JOIN muscle_groups ON exercise_muscle_groups.muscle_group_id = muscle_groups.muscle_group_id
-            ORDER by muscle_group_name, exercise_name
-            """)
-    
-    exercises_and_muscles = c.fetchall()
-    close_connection(conn)
-    return exercises_and_muscles 
-
 def display_workout(session_date, user_id):
     conn, c = establish_connection()
+    if conn is None: return None
     session_ids = get_workout_session_ids(c, session_date, user_id)
     placeholders = ','.join('?' * len(session_ids))
 
@@ -298,11 +346,15 @@ def display_workout(session_date, user_id):
         ORDER BY workout_sessions.id, workout_logs.id, workout_sets.set_number;
         """
     
-    c.execute(query, session_ids)
-    workouts = c.fetchall()
-    close_connection(conn)
-    return workouts
-
+    try:
+        c.execute(query, session_ids)
+        workouts = c.fetchall()
+        return workouts
+    except sqlite3.Error:
+        return None
+    finally:
+        close_connection(conn)
+    
 def display_custom_exercises(c, user_id):
     data = c.execute("SELECT id, exercise_name FROM custom_exercises WHERE user_id = ?", (user_id,)).fetchall()
     custom_exercises = [{"id": row[0], "name": row[1]} for row in data]
@@ -315,6 +367,7 @@ def display_custom_cardio(c, user_id):
 
 def display_cardio_session(session_date, user_id):
     conn, c = establish_connection()
+    if conn is None: return None
     session_ids = get_cardio_session_ids(c, session_date, user_id)
     placeholders = ','.join('?' * len(session_ids))
 
@@ -330,11 +383,15 @@ def display_cardio_session(session_date, user_id):
         ORDER by cardio_logs.id
         """
     
-    c.execute(query, session_ids)
-    session = c.fetchall()
-    close_connection(conn)
-    return session
-
+    try:
+        c.execute(query, session_ids)
+        session = c.fetchall()
+        return session
+    except sqlite3.Error:
+        return None
+    finally:
+        close_connection(conn)
+    
 def display_cardio_types(c):
     c.execute("SELECT cardio_type_name FROM cardio_types")
     cardio_types = sorted([row[0] for row in c.fetchall()])
@@ -343,24 +400,42 @@ def display_cardio_types(c):
 # == INSERT ==
 def create_custom_exercise(user_id, exercise):
     conn, c = establish_connection()
-    c.execute("INSERT INTO custom_exercises (user_id, exercise_name) VALUES (?, ?)", (user_id, exercise))
-    close_connection(conn)
+    if conn is None: return None
+    try:
+        c.execute("INSERT INTO custom_exercises (user_id, exercise_name) VALUES (?, ?)", (user_id, exercise))
+        conn.commit()
+    except sqlite3.Error:
+        conn.rollback()
+    finally:
+        close_connection(conn)
 
 def create_custom_cardio(user_id, cardio_type):
     conn, c = establish_connection()
-    c.execute("INSERT INTO custom_cardio (user_id, cardio_type) VALUES (?, ?)", (user_id, cardio_type))
-    close_connection(conn)
+    if conn is None: return None
+    try:
+        c.execute("INSERT INTO custom_cardio (user_id, cardio_type) VALUES (?, ?)", (user_id, cardio_type))
+        conn.commit()
+    except sqlite3.Error:
+        conn.rollback()
+    finally:
+        close_connection(conn)
 
 def insert_workout_session(session_date, session_notes, user_id):
     conn, c = establish_connection()
-    c.execute("""
-            INSERT INTO workout_sessions (session_date, session_notes, user_id)
-            VALUES (?, ?, ?)
-            """, (session_date, session_notes if session_notes else None, user_id))
-    session_id = c.lastrowid
-    close_connection(conn)
-    return session_id
-
+    if conn is None: return None
+    try:
+        c.execute("""
+                INSERT INTO workout_sessions (session_date, session_notes, user_id)
+                VALUES (?, ?, ?)
+                """, (session_date, session_notes if session_notes else None, user_id))
+        session_id = c.lastrowid
+        conn.commit()
+        return session_id
+    except sqlite3.Error:
+        conn.rollback()
+    finally:
+        close_connection(conn)
+    
 def insert_workout_log(c, session_id, exercise_id, custom_exercise_id, exercise_notes):
     c.execute("""
                 INSERT INTO workout_logs (session_id, exercise_id, custom_exercise_id, exercise_notes)
@@ -396,23 +471,29 @@ def log_cardio_log(c, cardio_session_id, cardio_type, duration, distance, distan
 # == DELETE ==
 def delete_custom_exercise(user_id, exercise_id):
     conn, c = establish_connection()
+    if conn is None: return None
     try:
         c.execute("DELETE FROM custom_exercises WHERE user_id = ? AND id = ?",(user_id, exercise_id))
-        close_connection(conn)
+        conn.commit()
         return True
-    except sqlite3.IntegrityError:
-        conn.close()
+    except sqlite3.Error:
+        conn.rollback()
         return False
+    finally:
+        close_connection(conn)
     
 def delete_custom_cardio(user_id, cardio_id):
     conn, c = establish_connection()
+    if conn is None: return None
     try:
         c.execute("DELETE FROM custom_cardio WHERE user_id = ? AND id = ?",(user_id, cardio_id))
-        close_connection(conn)
+        conn.commit()
         return True
-    except sqlite3.IntegrityError:
-        conn.close()
+    except sqlite3.Error:
+        conn.rollback()
         return False   
+    finally:
+        close_connection(conn)
 
 # == CLEAR FLASK SESSION ==
 def clear_workout_session():
