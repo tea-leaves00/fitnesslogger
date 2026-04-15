@@ -436,29 +436,32 @@ def insert_workout_session(session_date, session_notes, user_id):
     finally:
         close_connection(conn)
     
-def insert_workout_log(c, session_id, exercise_id, custom_exercise_id, exercise_notes):
+def insert_workout_log(c, conn, session_id, exercise_id, custom_exercise_id, exercise_notes):
     c.execute("""
                 INSERT INTO workout_logs (session_id, exercise_id, custom_exercise_id, exercise_notes)
                 VALUES (?, ?, ?, ?)
             """, (session_id, exercise_id, custom_exercise_id, exercise_notes if exercise_notes else None))
+    conn.commit()
     workout_log_id = c.lastrowid
     return workout_log_id
 
-def insert_workout_sets(c, workout_log_id, set_number, reps, weight):
+def insert_workout_sets(c, conn, workout_log_id, set_number, reps, weight):
     c.execute("""
             INSERT INTO workout_sets (workout_log_id, set_number, reps, weight)
             VALUES (?, ?, ?, ?)
         """, (workout_log_id, set_number, reps, weight))
+    conn.commit()
 
-def log_cardio_session(c, session_date, notes, user_id):
+def log_cardio_session(c, conn, session_date, notes, user_id):
     c.execute("""
         INSERT INTO cardio_sessions (session_date, session_notes, user_id)
         VALUES (?, ?, ?)
     """, (session_date, notes if notes else None, user_id))
+    conn.commit()
     session_id = c.lastrowid
     return session_id
 
-def log_cardio_log(c, cardio_session_id, cardio_type, duration, distance, distance_unit, intensity):
+def log_cardio_log(c, conn, cardio_session_id, cardio_type, duration, distance, distance_unit, intensity):
     c.execute("SELECT cardio_type_id FROM cardio_types WHERE cardio_type_name = ?", (cardio_type,))
     cardio_type_id = c.fetchone()[0]
     c.execute("""
@@ -467,6 +470,7 @@ def log_cardio_log(c, cardio_session_id, cardio_type, duration, distance, distan
         """, (cardio_session_id, cardio_type_id, duration, 
         distance if distance else None, distance_unit if distance_unit else None,
         intensity if intensity else None))
+    conn.commit()
 
 # == DELETE ==
 def delete_custom_exercise(user_id, exercise_id):

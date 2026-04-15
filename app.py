@@ -305,6 +305,7 @@ def log_workout():
                 user_id = current_user.id
                 session_id = insert_workout_session(session['session_date'], session['session_notes'], user_id)
                 session['current_workout_id'] = session_id
+                print(session_id)
             
             exercises_processed = set()
             conn, c = establish_connection()
@@ -319,15 +320,18 @@ def log_workout():
                             exercise_id = get_exercise_id(c, set_data['exercise'])
                             custom_exercise_id = None
                         
-                        workout_log_id = insert_workout_log(c, session_id, exercise_id, custom_exercise_id, set_data['exercise_notes'])
+                        workout_log_id = insert_workout_log(c, conn, session['current_workout_id'], exercise_id, custom_exercise_id, set_data['exercise_notes'])
+                        if workout_log_id:
+                            print(workout_log_id)
                         exercises_processed.add(set_data['exercise'])
 
                     if set_data['same_sets'] == True:
                         for set_number in range(1, set_data['sets'] + 1):
-                            insert_workout_sets(c, workout_log_id, set_number, set_data['reps'], set_data['weight'])
+                            insert_workout_sets(c, conn, workout_log_id, set_number, set_data['reps'], set_data['weight'])
                     else:
-                        insert_workout_sets(c, workout_log_id, set_data['set_number'], set_data['reps'], set_data['weight'])
+                        insert_workout_sets(c, conn, workout_log_id, set_data['set_number'], set_data['reps'], set_data['weight'])
             finally:
+                conn.commit()
                 close_connection(conn)
 
             clear_workout_session()
@@ -483,6 +487,7 @@ def custom_exercises():
             editing_exercise = True
             conn, c = establish_connection()
             custom_exercises = display_custom_exercises(c, user_id)
+            conn.commit()
             close_connection(conn)
         elif request.form.get('action') == 'save_changes':
             old_exercises = request.form.getlist('old_exercise')
@@ -492,6 +497,7 @@ def custom_exercises():
             for exercise_id, old_exercise, new_exercise in zip(exercise_ids, old_exercises, new_exercises):
                 if old_exercise != new_exercise:
                     edit_custom_exercises(c, user_id, new_exercise, exercise_id)
+            conn.commit()
             close_connection(conn)
             flash("Exercises succesfully edited")
             return redirect(url_for('custom_exercises'))
@@ -568,10 +574,11 @@ def log_cardio():
                 return redirect(url_for('log_cardio'))
             else: 
                 conn, c = establish_connection()
-                session_id = log_cardio_session(c, session['session_date'], session['session_notes'], user_id)
+                session_id = log_cardio_session(c, conn, session['session_date'], session['session_notes'], user_id)
                 current_logs = session['current_logs']
                 for log in current_logs:
-                    log_cardio_log(c, session_id, log['cardio_type'], log['db_duration'], log['distance'], log['distance_unit'], log['intensity'])
+                    log_cardio_log(c, conn, session_id, log['cardio_type'], log['db_duration'], log['distance'], log['distance_unit'], log['intensity'])
+                conn.commit()
                 close_connection(conn)
                 clear_cardio_session()
                 flash("Cardio Session Logged Successfully!")
@@ -701,6 +708,7 @@ def custom_cardio():
             editing_cardio = True
             conn, c = establish_connection()
             custom_cardio = display_custom_cardio(c, user_id)
+            conn.commit()
             close_connection(conn)
         elif request.form.get('action').startswith('delete_'):
             action = request.form.get('action')
@@ -712,6 +720,7 @@ def custom_cardio():
             editing_cardio = True
             conn, c = establish_connection()
             custom_cardio = display_custom_cardio(c, user_id)
+            conn.commit()
             close_connection(conn)
         elif request.form.get('action') == 'save_changes':
             old_cardio = request.form.getlist('old_cardio')
@@ -722,6 +731,7 @@ def custom_cardio():
             for cardio_id, old_card, new_card in zip(cardio_id, old_cardio, new_cardio):
                 if old_card != new_card:
                     edit_custom_cardio(c, user_id, new_card, cardio_id)
+            conn.commit()
             close_connection(conn)
 
     return render_template('custom_cardio.html', custom_cardio=custom_cardio, editing_cardio=editing_cardio)
