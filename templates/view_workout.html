@@ -3,7 +3,7 @@
 
 {% block weightlifting_content %}
 
-<form method="POST">
+<form action="{{ url_for('view_workout') }}" method="POST">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="date" name="session_date" value="{{ session.get('session_date', '') }}">
     <button type="submit" name="action" value="view">View Workout</button>
@@ -32,7 +32,7 @@
         {% if is_time_based %}
             {% set minutes = reps // 60 %}
             {% set seconds = reps % 60 %}
-            <p>Set {{ set_number }}: {{ minutes }}:{{ '%02d' | format(seconds) }}{% if weight %}, {{ weight }} lbs{% endif %}</p>
+            <p>Set {{ set_number }}: {{ minutes }} minutes:{{ '%02d' | format(seconds) }} seconds{% if weight %}, {{ weight }} lbs{% endif %}</p>
         {% else %}
             {% if weight is none %}
                 <p>Set {{ set_number }}: {{ reps }} reps, Bodyweight</p>
@@ -45,6 +45,6 @@
     <a href="{{ url_for('edit_workout', session_date=workouts[0][1]) }}">Edit Workout</a>
 
 {% elif workout_searched %}
-    <p>No workouts found</p>
+    <strong><p>No workouts found</p></strong>
 {% endif %}
 {% endblock %}

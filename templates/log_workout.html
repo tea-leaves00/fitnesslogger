@@ -26,11 +26,20 @@
     <table>
         <!-- Table Headers -->
         <tr>
+            {% if current_sets %}
             <th>Exercise</th>
             <th>Exercise Notes (One Per Exercise)</th>
             <th>Sets</th>
             <th>Reps</th>
             <th>Weight</th>
+            <th></th>
+            {% else %}
+            <th>Exercise</th>
+            <th>Exercise Notes (One Per Exercise)</th>
+            <th>Sets</th>
+            <th>Reps</th>
+            <th>Weight</th>
+            {% endif %}
         </tr>
         
         <!-- Display entered data and separate different exercises -->
@@ -42,6 +51,11 @@
                 <td>{{ set.sets }} Sets</td>
                 <td>{{ set.reps }}</td>
                 <td>{{ set.weight }}</td>
+                <td>
+                    <button class="delete_button" type="submit" name="action" value="delete_{{ loop.index0 }}">
+                        <img src="{{ url_for('static', filename='icons/trash.svg') }}" width="15" height="15">
+                    </button>
+                </td>
             </tr>
             {% else %}
             <tr>
@@ -50,6 +64,11 @@
                 <td>Set No. {{ set.set_number }}</td>
                 <td>{{ set.reps }}</td>
                 <td>{{ set.weight }}</td>
+                <td>
+                    <button class="delete_button" type="submit" name="action" value="delete">
+                        <img src="{{ url_for('static', filename='icons/trash.svg') }}" width="15" height="15">
+                    </button>
+                </td>
             </tr>
             {% endif %}
         {% endfor %}
@@ -68,15 +87,15 @@
                 {% endfor %}
             </select>
             {% if custom_exercises %}
-            <label for="custom_exercise">Custom Exercises</label>
-            <select name="custom_exercise" id="custom_exercise_select">
-                <option value="" selected>-- Select Custom Exercise --</option>
-                {% for custom_exercise in custom_exercises %}
-                <option value="{{ custom_exercise.name }}">
-                    {{ custom_exercise.name }}
-                </option>
-                {% endfor %}
-            </select>
+                <label for="custom_exercise">Custom Exercises</label>
+                <select name="custom_exercise" id="custom_exercise_select">
+                    <option value="" selected>-- Select Custom Exercise --</option>
+                    {% for custom_exercise in custom_exercises %}
+                    <option value="{{ custom_exercise.name }}">
+                        {{ custom_exercise.name }}
+                    </option>
+                    {% endfor %}
+                </select>
             {% endif %}
             </td>
 
