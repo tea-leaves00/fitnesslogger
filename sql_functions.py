@@ -1,43 +1,35 @@
+#NOTE eventually implement logging module
+#NOTE eventually implement contextlib module
+#NOTE do integrity check everynight? before copying maybe?
+
 import sqlite3
-from flask import session
-from config import Config, ProdConfig, DevConfig
+from flask import session, current_app
+from config import Config
 import secrets
 import resend
 import os
 
-env = os.environ.get('FLASK_ENV', 'development')
-if env == 'production': 
-    DB_PATH = ProdConfig.DB_PATH
-    BASE_URL = ProdConfig.BASE_URL
-else: 
-    DB_PATH = DevConfig.DB_PATH
-    BASE_URL = DevConfig.BASE_URL
 resend.api_key = Config.RESEND_API_KEY
 
-# == CONNECT AND CLOSE ==
+
+# == CONNECT  ==
 def establish_connection():
-    #consider using sqlite3.Row for row factory
-    try:
-        conn = sqlite3.connect(DB_PATH, timeout=10.0)
-        conn.execute("PRAGMA foreign_keys = ON")
-        conn.execute("PRAGMA journal_mode = WAL")
-        conn.execute("PRAGMA synchronous = NORMAL")
-        c = conn.cursor()
-        return conn, c
-    # should this be different? return something more usable?
-    except sqlite3.Error:
-        return None, None
+    db_path = current_app.config['DB_PATH']
+    if not os.path.exists(db_path):
+        raise FileNotFoundError(f"Database not found: {db_path}")
+    conn = sqlite3.connect(db_path, timeout=10.0)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    c = conn.cursor()
+    return conn, c
 
-def close_connection(conn):
-    conn.close()
 
-# == EMAIL VERIFICATION & RESET == 
+# == EMAIL VERIFICATION == 
 def generate_verification_token():
     return secrets.token_urlsafe(32)
 
 def save_verification_token(email, token):
     conn, c = establish_connection()
-    if conn is None: return False
     try:
         c.execute("""
             UPDATE users 
@@ -50,10 +42,10 @@ def save_verification_token(email, token):
         conn.rollback()
         return False
     finally:
-        close_connection(conn)
+        conn.close()
 
 def send_verification_email(email, token):
-    verification_link = f"{BASE_URL}/verify/{token}"
+    verification_link = f"{current_app.config['BASE_URL']}/verify/{token}"
     
     params = {
         "from": "Fitness Logger <noreply@fitnesslogger.app>",
@@ -78,7 +70,7 @@ def verify_user_token(token):
     result = c.fetchone()
     
     if not result:
-        close_connection(conn)
+        conn.close()
         return False, "Invalid token"
     
     user_id, token_created_at = result
@@ -89,7 +81,7 @@ def verify_user_token(token):
     is_valid = c.fetchone()[0]
     
     if not is_valid:
-        close_connection(conn)
+        conn.close()
         return False, "Token expired"
     
     c.execute("""
@@ -98,13 +90,14 @@ def verify_user_token(token):
         WHERE id = ?
     """, (user_id,))
     conn.commit()
-    close_connection(conn)
+    conn.close()
     
     return True, "Account verified"
 
+
+# == RESET PASSWORD ==
 def save_reset_token(email, token):
     conn, c = establish_connection()
-    if conn is None: return None
     try:
         c.execute("""
             UPDATE users 
@@ -117,10 +110,10 @@ def save_reset_token(email, token):
         conn.rollback()
         return False
     finally:
-        close_connection(conn)
+        conn.close()
 
 def send_password_reset_email(email, token):
-    reset_link = f"{BASE_URL}/reset_password/{token}"
+    reset_link = f"{current_app.config['BASE_URL']}/reset_password/{token}"
     
     params = {
         "from": "Fitness Logger <noreply@fitnesslogger.app>",
@@ -146,7 +139,7 @@ def verify_reset_token(token):
     result = c.fetchone()
     
     if not result:
-        close_connection(conn)
+        conn.close()
         return None, "Invalid token"
     
     user_id, token_created_at = result
@@ -157,15 +150,14 @@ def verify_reset_token(token):
     is_valid = c.fetchone()[0]
     
     if not is_valid:
-        close_connection(conn)
+        conn.close()
         return None, "Token expired"
     
-    close_connection(conn)
+    conn.close()
     return user_id, "Valid"
 
 def update_password(user_id, password_hash):
     conn, c = establish_connection()
-    if conn is None: return None
     try:
         c.execute("UPDATE users SET password_hash = ? WHERE id = ?", (password_hash, user_id))
         conn.commit()
@@ -173,11 +165,10 @@ def update_password(user_id, password_hash):
         conn.rollback()
         return False
     finally:
-        close_connection(conn)
+        conn.close()
 
 def clear_reset_token(user_id):
     conn, c = establish_connection()
-    if conn is None: return None
     try:
         c.execute("UPDATE users SET reset_token = NULL, reset_token_created_at = NULL WHERE id = ?", (user_id,))
         conn.commit()
@@ -186,8 +177,10 @@ def clear_reset_token(user_id):
         conn.rollback()
         return False
     finally:
-        close_connection(conn)
+        conn.close()
 
+
+# == SEND USERNAME ==
 def send_username_email(email, username):
     params = {
         "from": "Fitness Logger <noreply@fitnesslogger.app>",
@@ -201,10 +194,10 @@ def send_username_email(email, username):
     }
     resend.Emails.send(params)
 
+
 # == USERS == 
 def create_user(first_name, last_name, username, password_hash, email):
     conn, c = establish_connection()
-    if conn is None: return None
     try:
         c.execute("INSERT INTO users (first_name, last_name, username, password_hash, email) VALUES (?, ?, ?, ?, ?)"
                     ,(first_name, last_name, username, password_hash, email))
@@ -214,11 +207,10 @@ def create_user(first_name, last_name, username, password_hash, email):
         conn.rollback()
         return False
     finally:
-        close_connection(conn)
+        conn.close()
     
 def get_user_by_id(user_id):
     conn, c = establish_connection()
-    if conn is None: return None
     try:
         c.execute("SELECT id, first_name, last_name, username, email FROM users WHERE id = ?", (user_id,))
         data = c.fetchone()
@@ -226,11 +218,10 @@ def get_user_by_id(user_id):
     except sqlite3.Error:
         return None
     finally:
-        close_connection(conn)
+        conn.close()
     
 def get_user_by_username(username):
     conn, c = establish_connection()
-    if conn is None: return None
     try: 
         c.execute("SELECT id, first_name, last_name, username, email, password_hash, verified FROM users WHERE username = ?", (username,))
         data = c.fetchone()
@@ -238,11 +229,10 @@ def get_user_by_username(username):
     except sqlite3.Error:
         return None
     finally:
-        close_connection(conn)
+        conn.close()
     
 def get_user_by_email(email):
     conn, c = establish_connection()
-    if conn is None: return None
     try:
         c.execute("SELECT id FROM users WHERE email = ?", (email,))
         data = c.fetchone()
@@ -253,11 +243,10 @@ def get_user_by_email(email):
     except sqlite3.Error:
         return None
     finally:
-        close_connection(conn)
+        conn.close()
 
 def get_username_by_email(email):
     conn, c = establish_connection()
-    if conn is None: return None
     try:
         c.execute("SELECT username FROM users WHERE email = ?", (email,))
         data = c.fetchone()
@@ -265,10 +254,10 @@ def get_username_by_email(email):
             return data[0]
         else: 
             return None
-    except:
+    except sqlite3.Error:
         return None
     finally:
-        close_connection(conn)
+        conn.close()
     
     
 # == SELECT ==
@@ -291,24 +280,6 @@ def get_cardio_session_ids(c, session_date, user_id):
     c.execute("SELECT id FROM cardio_sessions WHERE session_date = ? AND user_id = ?", (session_date, user_id))
     session_ids = [id[0] for id in c.fetchall()]
     return session_ids
-
-def check_is_time_based(exercises, exercise, user_id):
-    conn, c = establish_connection()
-    if conn is None: return None
-    try:
-        if exercise in exercises:
-            c.execute("SELECT is_time_based FROM exercises WHERE exercise = ?", exercise)
-        else:
-            c.execute("SELECT is_time_based FROM custom_exercises WHERE exercise = ? and user_id = ?", (exercise, user_id))
-        result = c.fetchone()[0]
-        if result == 0:
-            return False
-        else:
-            return True
-    except:
-        return None
-    finally:
-        close_connection(conn)
 
 def get_time_based_exercises(c):
     result = c.execute("SELECT exercise FROM exercises WHERE is_time_based = 1").fetchall()
@@ -337,7 +308,6 @@ def display_exercises(c):
 
 def display_workout(session_date, user_id):
     conn, c = establish_connection()
-    if conn is None: return None
     session_ids = get_workout_session_ids(c, session_date, user_id)
     placeholders = ','.join('?' * len(session_ids))
 
@@ -363,7 +333,7 @@ def display_workout(session_date, user_id):
     except sqlite3.Error:
         return None
     finally:
-        close_connection(conn)
+        conn.close()
     
 def display_custom_exercises(c, user_id):
     data = c.execute("SELECT id, exercise FROM custom_exercises WHERE user_id = ?", (user_id,)).fetchall()
@@ -377,7 +347,6 @@ def display_custom_cardio(c, user_id):
 
 def display_cardio_session(session_date, user_id):
     conn, c = establish_connection()
-    if conn is None: return None
     session_ids = get_cardio_session_ids(c, session_date, user_id)
     placeholders = ','.join('?' * len(session_ids))
 
@@ -400,7 +369,7 @@ def display_cardio_session(session_date, user_id):
     except sqlite3.Error:
         return None
     finally:
-        close_connection(conn)
+        conn.close()
     
 def display_cardio_types(c):
     c.execute("SELECT cardio_type FROM cardio_types")
@@ -410,29 +379,26 @@ def display_cardio_types(c):
 # == INSERT ==
 def create_custom_exercise(user_id, exercise):
     conn, c = establish_connection()
-    if conn is None: return None
     try:
         c.execute("INSERT INTO custom_exercises (user_id, exercise) VALUES (?, ?)", (user_id, exercise))
         conn.commit()
     except sqlite3.Error:
         conn.rollback()
     finally:
-        close_connection(conn)
+        conn.close()
 
 def create_custom_cardio(user_id, cardio_type):
     conn, c = establish_connection()
-    if conn is None: return None
     try:
         c.execute("INSERT INTO custom_cardio (user_id, cardio_type) VALUES (?, ?)", (user_id, cardio_type))
         conn.commit()
     except sqlite3.Error:
         conn.rollback()
     finally:
-        close_connection(conn)
+        conn.close()
 
 def insert_workout_session(session_date, session_notes, user_id):
     conn, c = establish_connection()
-    if conn is None: return None
     try:
         c.execute("""
                 INSERT INTO workout_sessions (session_date, session_notes, user_id)
@@ -444,7 +410,7 @@ def insert_workout_session(session_date, session_notes, user_id):
     except sqlite3.Error:
         conn.rollback()
     finally:
-        close_connection(conn)
+        conn.close()
     
 def insert_workout_log(c, conn, session_id, exercise_id, custom_exercise_id, exercise_notes):
     c.execute("""
@@ -486,7 +452,6 @@ def log_cardio_log(c, conn, cardio_session_id, cardio_type, duration, distance, 
 # == DELETE ==
 def delete_custom_exercise(user_id, exercise_id):
     conn, c = establish_connection()
-    if conn is None: return None
     try:
         c.execute("DELETE FROM custom_exercises WHERE user_id = ? AND id = ?",(user_id, exercise_id))
         conn.commit()
@@ -495,11 +460,10 @@ def delete_custom_exercise(user_id, exercise_id):
         conn.rollback()
         return False
     finally:
-        close_connection(conn)
+        conn.close()
     
 def delete_custom_cardio(user_id, cardio_id):
     conn, c = establish_connection()
-    if conn is None: return None
     try:
         c.execute("DELETE FROM custom_cardio WHERE user_id = ? AND id = ?",(user_id, cardio_id))
         conn.commit()
@@ -508,7 +472,7 @@ def delete_custom_cardio(user_id, cardio_id):
         conn.rollback()
         return False   
     finally:
-        close_connection(conn)
+        conn.close()
 
 # == CLEAR FLASK SESSION ==
 def clear_workout_session():
