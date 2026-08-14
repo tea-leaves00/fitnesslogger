@@ -4,7 +4,8 @@ __pycache__/
 *.pyc
 *.db
 .DS_Store
-notes.txt
+*.txt
+notes.md
 .env
 schema.sql
 schema_target.sql
