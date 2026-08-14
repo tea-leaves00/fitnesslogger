@@ -32,15 +32,11 @@ def save_verification_token(email, token):
     conn, c = establish_connection()
     try:
         c.execute("""
-            UPDATE users 
+            UPDATE users
             SET verification_token = ?, verification_token_created_at = CURRENT_TIMESTAMP
             WHERE email = ?
         """, (token, email))
         conn.commit()
-        return True
-    except sqlite3.Error:
-        conn.rollback()
-        return False
     finally:
         conn.close()
 
@@ -63,36 +59,23 @@ def send_verification_email(email, token):
 
 def verify_user_token(token):
     conn, c = establish_connection()
-    c.execute("""
-        SELECT id, verification_token_created_at FROM users 
-        WHERE verification_token = ?
-    """, (token,))
-    result = c.fetchone()
-    
-    if not result:
+    try:
+        c.execute("SELECT id, verification_token_created_at FROM users WHERE verification_token = ?", (token,))
+        result = c.fetchone()
+        if not result:
+            return False, "Invalid token"
+        
+        user_id, token_created_at = result
+        c.execute("SELECT (julianday('now') - julianday(?)) * 24 < 24", (token_created_at,))
+        if not c.fetchone()[0]:
+            return False, "Token expired"
+        
+        c.execute("""UPDATE users SET verified = 1, verification_token = NULL,
+                     verification_token_created_at = NULL WHERE id = ?""", (user_id,))
+        conn.commit()
+        return True, "Account verified"
+    finally:
         conn.close()
-        return False, "Invalid token"
-    
-    user_id, token_created_at = result
-    
-    c.execute("""
-        SELECT (julianday('now') - julianday(?)) * 24 < 24
-    """, (token_created_at,))
-    is_valid = c.fetchone()[0]
-    
-    if not is_valid:
-        conn.close()
-        return False, "Token expired"
-    
-    c.execute("""
-        UPDATE users 
-        SET verified = 1, verification_token = NULL, verification_token_created_at = NULL
-        WHERE id = ?
-    """, (user_id,))
-    conn.commit()
-    conn.close()
-    
-    return True, "Account verified"
 
 
 # == RESET PASSWORD ==
@@ -100,15 +83,11 @@ def save_reset_token(email, token):
     conn, c = establish_connection()
     try:
         c.execute("""
-            UPDATE users 
+            UPDATE users
             SET reset_token = ?, reset_token_created_at = CURRENT_TIMESTAMP
             WHERE email = ?
         """, (token, email))
         conn.commit()
-        return True
-    except sqlite3.Error:
-        conn.rollback()
-        return False
     finally:
         conn.close()
 
@@ -132,38 +111,32 @@ def send_password_reset_email(email, token):
 
 def verify_reset_token(token):
     conn, c = establish_connection()
-    c.execute("""
-        SELECT id, reset_token_created_at FROM users 
-        WHERE reset_token = ?
-    """, (token,))
-    result = c.fetchone()
-    
-    if not result:
+    try:
+        c.execute("""
+            SELECT id, reset_token_created_at FROM users 
+            WHERE reset_token = ?
+        """, (token,))
+        result = c.fetchone()
+        if not result:
+            return None, "Invalid token"
+        
+        user_id, token_created_at = result
+        c.execute("""
+            SELECT (julianday('now') - julianday(?)) * 24 < 24
+        """, (token_created_at,))
+        is_valid = c.fetchone()[0]
+        if not is_valid:
+            return None, "Token expired"
+        
+        return user_id, "Valid"
+    finally:
         conn.close()
-        return None, "Invalid token"
-    
-    user_id, token_created_at = result
-    
-    c.execute("""
-        SELECT (julianday('now') - julianday(?)) * 24 < 24
-    """, (token_created_at,))
-    is_valid = c.fetchone()[0]
-    
-    if not is_valid:
-        conn.close()
-        return None, "Token expired"
-    
-    conn.close()
-    return user_id, "Valid"
 
 def update_password(user_id, password_hash):
     conn, c = establish_connection()
     try:
         c.execute("UPDATE users SET password_hash = ? WHERE id = ?", (password_hash, user_id))
         conn.commit()
-    except sqlite3.Error:
-        conn.rollback()
-        return False
     finally:
         conn.close()
 
@@ -172,10 +145,6 @@ def clear_reset_token(user_id):
     try:
         c.execute("UPDATE users SET reset_token = NULL, reset_token_created_at = NULL WHERE id = ?", (user_id,))
         conn.commit()
-        return True
-    except sqlite3.Error:
-        conn.rollback()
-        return False
     finally:
         conn.close()
 
@@ -203,8 +172,7 @@ def create_user(first_name, last_name, username, password_hash, email):
                     ,(first_name, last_name, username, password_hash, email))
         conn.commit()
         return True
-    except sqlite3.Error:
-        conn.rollback()
+    except sqlite3.IntegrityError:
         return False
     finally:
         conn.close()
@@ -215,33 +183,27 @@ def get_user_by_id(user_id):
         c.execute("SELECT id, first_name, last_name, username, email FROM users WHERE id = ?", (user_id,))
         data = c.fetchone()
         return data
-    except sqlite3.Error:
-        return None
     finally:
         conn.close()
-    
+
 def get_user_by_username(username):
     conn, c = establish_connection()
-    try: 
+    try:
         c.execute("SELECT id, first_name, last_name, username, email, password_hash, verified FROM users WHERE username = ?", (username,))
         data = c.fetchone()
         return data
-    except sqlite3.Error:
-        return None
     finally:
         conn.close()
-    
+
 def get_user_by_email(email):
     conn, c = establish_connection()
     try:
         c.execute("SELECT id FROM users WHERE email = ?", (email,))
         data = c.fetchone()
-        if data:  
+        if data:
             return True
-        else: 
+        else:
             return False
-    except sqlite3.Error:
-        return None
     finally:
         conn.close()
 
@@ -250,12 +212,10 @@ def get_username_by_email(email):
     try:
         c.execute("SELECT username FROM users WHERE email = ?", (email,))
         data = c.fetchone()
-        if data:  
+        if data:
             return data[0]
-        else: 
+        else:
             return None
-    except sqlite3.Error:
-        return None
     finally:
         conn.close()
     
@@ -330,8 +290,6 @@ def display_workout(session_date, user_id):
         c.execute(query, session_ids)
         workouts = c.fetchall()
         return workouts
-    except sqlite3.Error:
-        return None
     finally:
         conn.close()
     
@@ -366,8 +324,6 @@ def display_cardio_session(session_date, user_id):
         c.execute(query, session_ids)
         session = c.fetchall()
         return session
-    except sqlite3.Error:
-        return None
     finally:
         conn.close()
     
@@ -382,8 +338,6 @@ def create_custom_exercise(user_id, exercise):
     try:
         c.execute("INSERT INTO custom_exercises (user_id, exercise) VALUES (?, ?)", (user_id, exercise))
         conn.commit()
-    except sqlite3.Error:
-        conn.rollback()
     finally:
         conn.close()
 
@@ -392,8 +346,6 @@ def create_custom_cardio(user_id, cardio_type):
     try:
         c.execute("INSERT INTO custom_cardio (user_id, cardio_type) VALUES (?, ?)", (user_id, cardio_type))
         conn.commit()
-    except sqlite3.Error:
-        conn.rollback()
     finally:
         conn.close()
 
@@ -407,8 +359,6 @@ def insert_workout_session(session_date, session_notes, user_id):
         session_id = c.lastrowid
         conn.commit()
         return session_id
-    except sqlite3.Error:
-        conn.rollback()
     finally:
         conn.close()
     
@@ -456,8 +406,7 @@ def delete_custom_exercise(user_id, exercise_id):
         c.execute("DELETE FROM custom_exercises WHERE user_id = ? AND id = ?",(user_id, exercise_id))
         conn.commit()
         return True
-    except sqlite3.Error:
-        conn.rollback()
+    except sqlite3.IntergrityError:
         return False
     finally:
         conn.close()
@@ -468,9 +417,8 @@ def delete_custom_cardio(user_id, cardio_id):
         c.execute("DELETE FROM custom_cardio WHERE user_id = ? AND id = ?",(user_id, cardio_id))
         conn.commit()
         return True
-    except sqlite3.Error:
-        conn.rollback()
-        return False   
+    except sqlite3.IntergrityError:
+        return False  
     finally:
         conn.close()
 

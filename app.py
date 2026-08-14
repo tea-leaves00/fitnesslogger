@@ -2,10 +2,10 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_wtf.csrf import CSRFProtect
 from werkzeug.security import generate_password_hash, check_password_hash
 from user_class import User
 from sql_functions import *
-from flask_wtf.csrf import CSRFProtect
 import os
 
 # == APP CONFIG ==
@@ -339,6 +339,7 @@ def log_workout():
                     else:
                         insert_workout_sets(c, conn, workout_log_id, set_data['set_number'], set_data['reps'], set_data['weight'])
             finally:
+                #BUG this could partial commit...strip it or move it
                 conn.commit()
                 conn.close()
 
