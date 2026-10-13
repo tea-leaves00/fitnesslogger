@@ -7,7 +7,6 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY')
     RESEND_API_KEY = os.environ.get('RESEND_API_KEY')
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-    SESSION_COOKIE_HTTPONLY = True
     BASE_URL = "https://www.fitnesslogger.app"
 
 class DevConfig(Config):

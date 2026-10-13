@@ -49,7 +49,7 @@
                 <select name="cardio_type" id="cardio_type">
                     {% if cardio_types %}
                         {% for cardio_type in cardio_types %}
-                        <option value="{{ cardio_type }}">{{ cardio_type }}</option>
+                        <option value="{{ cardio_type.cardio_type }}">{{ cardio_type.cardio_type }}</option>
                         {% endfor %}
                     {% endif %}
                 </select>

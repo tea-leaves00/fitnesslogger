@@ -80,9 +80,10 @@
             <select name="exercise" id="exercise_select">
                 <option value="" selected>-- Select Exercise --</option>
                 {% for exercise in exercises %}
-                <option value="{{ exercise }}" 
+                <!-- this is a short term solution!!! -->
+                <option value="{{ exercise.exercise }}" 
                     {% if current_sets and current_sets[-1].exercise == exercise %}selected{% endif %}>
-                    {{ exercise }}
+                    {{ exercise.exercise }}
                 </option>
                 {% endfor %}
             </select>
@@ -91,8 +92,9 @@
                 <select name="custom_exercise" id="custom_exercise_select">
                     <option value="" selected>-- Select Custom Exercise --</option>
                     {% for custom_exercise in custom_exercises %}
-                    <option value="{{ custom_exercise.name }}">
-                        {{ custom_exercise.name }}
+                    <!-- short term solution!!!! -->
+                    <option value="{{ custom_exercise.exercise }}">
+                        {{ custom_exercise.exercise }}
                     </option>
                     {% endfor %}
                 </select>

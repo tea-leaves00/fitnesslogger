@@ -2,15 +2,17 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from werkzeug.security import generate_password_hash, check_password_hash
-from user_class import User
-from sql_functions import *
 from flask_wtf.csrf import CSRFProtect
+from werkzeug.security import generate_password_hash, check_password_hash
+from utils.user_class import User
+from utils.db import *
+from utils.session_helpers import *
+from utils.email_service import *
 import os
 
 # == APP CONFIG ==
 app = Flask(__name__)
-env = os.environ.get('FLASK_ENV', 'development')
+env = os.environ.get('FLASK_ENV', 'dev')
 if env == 'production': app.config.from_object('config.ProdConfig')
 else: app.config.from_object('config.DevConfig')
 
@@ -35,16 +37,17 @@ def add_cache_headers(response):
         response.headers['X-Content-Type-Options'] = 'nosniff'
     return response
 
-# == LOGIN & WHATNOT ==
+# == AUTH ==
 @login_manager.user_loader
 def load_user(user_id):
-    data = get_user_by_id(int(user_id))
+    user = get_user(id=int(user_id))
 
-    if not data:
-        return None
+    if not user: return None
     
-    user = User(id=data[0], first_name=data[1], last_name=data[2], username=data[3], email=data[4])
-    return user
+    return User(
+        id=user['id'], 
+        first_name=user['first_name'], last_name=user['last_name'], 
+        username=user['username'], email=user['email'])
 
 @app.route('/register', methods=['GET', 'POST'])
 @limiter.limit("10 per minute")
@@ -77,20 +80,22 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         
-        data = get_user_by_username(username)
+        user = get_user(username=username)
         
-        if not data:
+        if not user:
             flash("Incorrect username or password")
             return redirect(url_for('login'))
         
-        password_hash = data[5]
+        password_hash = user['password_hash']
         if check_password_hash(password_hash, password):
-            if data[6] == 0:
+            if not user['verified']:
                 flash("Please verify your email before logging in.")
                 return redirect(url_for('login'))
             
-            user = User(id=data[0], first_name=data[1], last_name=data[2], 
-            username=data[3], email=data[4])
+            user = User(
+                id=user['id'], 
+                first_name=user['first_name'], last_name=user['last_name'], 
+                username=user['username'], email=user['email'])
             login_user(user)
             return redirect(url_for('index'))
         else:
@@ -101,10 +106,10 @@ def login():
 
 @app.route('/verify/<token>')
 def verify_email(token):
-    success, message = verify_user_token(token)
+    user_id, message = verify_user_token(token)
     flash(message)
 
-    if success:
+    if user_id:
         return redirect(url_for('login'))
     else:
         return redirect(url_for('register'))
@@ -114,10 +119,10 @@ def verify_email(token):
 def forgot_username():
     if request.method == 'POST':
         email = request.form.get('email')
-        username = get_username_by_email(email)
+        user = get_user(email=email)
 
-        if username:
-            send_username_email(email, username)
+        if user:
+            send_username_email(email, user['username'])
         
         flash("If an account with that email exists, you'll receive an email shortly.")
         return redirect(url_for('forgot_username'))
@@ -129,7 +134,7 @@ def forgot_username():
 def forgot_password():
     if request.method == 'POST':
         email = request.form.get('email')
-        user = get_user_by_email(email)
+        user = get_user(email=email)
         
         if user:
             token = generate_verification_token()
@@ -159,7 +164,6 @@ def reset_password(token):
         
         password_hash = generate_password_hash(password)
         update_password(user_id, password_hash)
-        clear_reset_token(user_id)
         
         flash("Password updated! You can now log in.")
         return redirect(url_for('login'))
@@ -194,9 +198,7 @@ def weightlifting_index():
 @app.route('/exercises', methods=['GET'])
 @login_required
 def exercises():
-    conn, c = establish_connection()
-    exercises = display_exercises(c)
-    close_connection(conn)
+    exercises = get_exercises()
     return render_template('exercises.html', exercises=exercises)
 
 # == LOG WORKOUT ==
@@ -204,18 +206,11 @@ def exercises():
 @login_required
 def log_workout():
     user_id = current_user.id
-    
-    keys = ['exercises', 'custom_exercises', 'time_based_exercises', 'time_based_custom_exercises']
-    if any(key not in session for key in keys):
-        conn, c = establish_connection()
-        data = {
-            'exercises': display_exercises(c),
-            'custom_exercises': display_custom_exercises(c, user_id),
-            'time_based_exercises': get_time_based_exercises(c),
-            'time_based_custom_exercises': get_time_based_custom_exercises(c, user_id)
-            }
-        close_connection(conn)
-        session.update(data)
+
+    exercises = get_exercises()
+    custom_exercises = get_custom_exercises(user_id)
+    exercise_ids = {row['exercise']: row['id'] for row in exercises}
+    custom_exercise_ids = {row['exercise']: row['id'] for row in custom_exercises}
 
     if request.method == 'POST':
         if request.form.get('action') == 'select_date':
@@ -226,47 +221,51 @@ def log_workout():
             session['date_selection'] = False
 
         elif request.form.get('action') == 'add_set':
-            exercise_name = request.form.get('exercise')
+            exercise = request.form.get('exercise')
             custom_exercise = request.form.get('custom_exercise')
             exercise_notes = request.form.get('exercise_notes')
-
-            # light error handling
-            if exercise_name and custom_exercise:
-                flash("Please select either a standard exercise OR a custom exercise, not both")
-                return redirect(url_for('log_workout'))
-            if not exercise_name and not custom_exercise:
-                flash("Please select an exercise")
-                return redirect(url_for('log_workout'))
-            if not exercise_notes:
-                exercise_notes = session.get('exercise_notes', '')
-            if not request.form.get('reps'):
-                flash('Reps are required')
-                return redirect(url_for('log_workout'))
-
-            selected_exercise = exercise_name if exercise_name else custom_exercise
-        
-            reps = int(request.form.get('reps'))
+            sets = (request.form.get('sets'))
+            reps = (request.form.get('reps'))
             bodyweight = request.form.get('bodyweight')
             weight = (request.form.get('weight'))
 
-            if bodyweight:
-                weight = None
-            elif weight:
-                weight = float(weight)
+            if exercise and custom_exercise:
+                flash("Please select either a standard exercise OR a custom exercise, not both")
+                return redirect(url_for('log_workout'))
+            if not exercise and not custom_exercise:
+                flash("Please select an exercise")
+                return redirect(url_for('log_workout'))
+            if not exercise_notes: exercise_notes = None
+            if not reps:
+                flash('Reps are required')
+                return redirect(url_for('log_workout'))
+            reps = int(reps)
+
+            sets = int(sets) if sets else None
+
+            if exercise:
+                selected_exercise = exercise
+                exercise_id = exercise_ids.get(selected_exercise)
+                is_custom = False
             else:
-                weight = None
+                selected_exercise = custom_exercise
+                exercise_id = custom_exercise_ids.get(selected_exercise)
+                is_custom = True
+        
+            if bodyweight: weight = None
+            elif weight: weight = float(weight)
+            else: weight = None
 
-            if 'current_sets' not in session:
-                session['current_sets'] = []
 
-            sets_input = request.form.get('sets')
-                
-            if sets_input:
-                sets = int(request.form.get('sets'))
+            if not session.get('current_sets'): session['current_sets'] = []
+
+            if sets:
                 session['current_sets'].append({
-                    'same_sets': True,
                     'exercise': selected_exercise,
+                    'exercise_id': exercise_id,
+                    'is_custom': is_custom,
                     'exercise_notes': exercise_notes,
+                    'same_sets': True,
                     'sets': sets,
                     'reps': reps, 
                     'weight': weight,
@@ -281,9 +280,11 @@ def log_workout():
                     session['current_set_number'] = 1
                 
                 session['current_sets'].append({
-                    'same_sets': False,
                     'exercise': selected_exercise,
+                    'exercise_id': exercise_id,
+                    'is_custom': is_custom,
                     'exercise_notes': exercise_notes,
+                    'same_sets': False,
                     'set_number': session['current_set_number'],
                     'reps': reps, 
                     'weight': weight
@@ -304,59 +305,34 @@ def log_workout():
             return redirect(url_for('log_workout'))
 
         elif request.form.get('action') == 'reset':
-            clear_sets()
+            clear_sets(session)
             return redirect(url_for('log_workout'))
         elif request.form.get('action') == 'back':
-            clear_workout_session()
+            clear_workout_session(session)
             return redirect(url_for('log_workout'))
         
         elif request.form.get('action') == 'finish_workout':
             if 'current_sets' not in session:
                 flash("Please enter at least one set")
                 return redirect(url_for('log_workout'))
-            if 'current_workout_id' not in session:
-                user_id = current_user.id
-                session_id = insert_workout_session(session['session_date'], session['session_notes'], user_id)
-                session['current_workout_id'] = session_id
-                print(session_id)
-            
-            exercises_processed = set()
-            conn, c = establish_connection()
-            try:
-                for set_data in session['current_sets']:
-                    if set_data['exercise'] not in exercises_processed:
-                        if set_data['exercise'] in [exercise['name'] for exercise in session['custom_exercises']]:
-                            exercise_id = None
-                            custom_exercise_id = get_custom_exercise_id(c, set_data['exercise'], user_id)
-                        else:
-                            exercise_id = get_exercise_id(c, set_data['exercise'])
-                            custom_exercise_id = None
-                        
-                        workout_log_id = insert_workout_log(c, conn, session['current_workout_id'], exercise_id, custom_exercise_id, set_data['exercise_notes'])
-                        if workout_log_id:
-                            print(workout_log_id)
-                        exercises_processed.add(set_data['exercise'])
-                    #consider using ".executemany()"
-                    if set_data['same_sets'] == True:
-                        for set_number in range(1, set_data['sets'] + 1):
-                            insert_workout_sets(c, conn, workout_log_id, set_number, set_data['reps'], set_data['weight'])
-                    else:
-                        insert_workout_sets(c, conn, workout_log_id, set_data['set_number'], set_data['reps'], set_data['weight'])
-            finally:
-                conn.commit()
-                close_connection(conn)
 
-            clear_workout_session()
+
+            grouped_sets = group_sets(session['current_sets'])
+            create_workout(session['session_date'], session['session_notes'], user_id, grouped_sets)
+
+            clear_workout_session(session)
             flash("Workout Logged Successfully!")
             return redirect(url_for('log_workout'))
 
             
-    return render_template('log_workout.html', exercises=session.get('exercises', []), 
-                        custom_exercises=session.get('custom_exercises', []),
-                        current_sets = session.get('current_sets', []), 
-                        date_selection=session.setdefault('date_selection', True),
-                        time_based_exercises=session.get('time_based_exercises', []),
-                        time_based_custom_exercises=session.get('time_based_custom_exercises', []))
+    return render_template('log_workout.html', exercises=exercises, 
+                        custom_exercises=custom_exercises,
+                        time_based_exercises=[row['exercise'] for row in exercises if row['is_time_based']],
+                        time_based_custom_exercises=[row['exercise'] for row in custom_exercises if row['is_time_based']],
+                        current_set=session.get('current_sets', []), 
+                        date_selection=session.setdefault('date_selection', True)
+                        )
+                        
 
 # == VIEW WORKOUT ==
 @app.route('/view_workout', methods= ['GET', 'POST'])
@@ -364,12 +340,11 @@ def log_workout():
 def view_workout():
     if request.method == 'POST':
         session_date = request.form.get('session_date')
-        # should the session date be stored in session?
+        #NOTE should the session date be stored in session?
         session['session_date'] = session_date
         user_id = current_user.id
 
-        workouts = display_workout(session_date, user_id)
-        print(workouts)
+        workouts = get_workout(session_date, user_id)
         
         session['current_workout'] = workouts
         session['workout_searched'] = True
@@ -389,71 +364,67 @@ def edit_workout(session_date):
     
     if request.method == 'POST':
         if request.form.get('action') == 'save':
-            conn, c = establish_connection()
-            try:
-                session_id = request.form.get('session_id')
-                new_session_date = request.form.get('session_date')
-                if new_session_date and new_session_date != session_date:
-                    c.execute("UPDATE workout_sessions SET session_date = ? WHERE id = ?",
-                            (new_session_date, session_id))
-                    conn.commit()
-                    return redirect(url_for('edit_workout', session_date=new_session_date))
+            with db_connection() as (conn, c):
+                try:
+                    session_id = request.form.get('session_id')
+                    new_session_date = request.form.get('session_date')
+                    if new_session_date and new_session_date != session_date:
+                        c.execute("UPDATE workout_sessions SET session_date = ? WHERE id = ?",
+                                (new_session_date, session_id))
+                        return redirect(url_for('edit_workout', session_date=new_session_date))
 
-                session_notes = request.form.get('session_notes')
-                if session_notes:
-                    c.execute("UPDATE workout_sessions SET session_notes = ? WHERE id = ?",
-                            (session_notes, session_id))
+                    session_notes = request.form.get('session_notes')
+                    if session_notes:
+                        c.execute("UPDATE workout_sessions SET session_notes = ? WHERE id = ?",
+                                (session_notes, session_id))
 
-                for input in request.form:
-                    # ====================================
-                    # RETURN TO THIS LATER TO FIX THIS
-                    # ====================================
+                    for input in request.form:
+                        # ====================================
+                        #FIXME RETURN TO THIS LATER TO FIX THIS
+                        # ====================================
 
-                    # if input.startswith('exercise_name_'):
-                    #             index = input.split('_')[-1]
-                    #             workout_log_id = request.form.get(f'workout_log_id_{index}')
-                    #             exercise_name = request.form.get(f'exercise_name_{index}')
-                                
-                    #             result = c.execute("SELECT id FROM exercises WHERE exercise = ?", (exercise_name,)).fetchone()
-                    #             if result:
-                    #                 exercise_id = result[0]
-                    #                 c.execute("""
-                    #                     UPDATE workout_logs
-                    #                     SET exercise_id = ?
-                    #                     WHERE id = ?
-                    #                 """, (exercise_id, workout_log_id))
-                    #                 conn.commit()
+                        # if input.startswith('exercise_name_'):
+                        #             index = input.split('_')[-1]
+                        #             workout_log_id = request.form.get(f'workout_log_id_{index}')
+                        #             exercise_name = request.form.get(f'exercise_name_{index}')
 
-                    # ====================================
-                    # RETURN TO THIS LATER TO FIX THIS
-                    # ====================================
-                    
-                    if input.startswith('exercise_notes_'):
-                        index = input.split('_')[-1]
-                        workout_log_id = request.form.get(f'workout_log_id_{index}')
-                        exercise_notes = request.form.get(f'exercise_notes_{index}')
-                        c.execute("UPDATE workout_logs SET exercise_notes = ? WHERE id = ?",
-                                (exercise_notes, workout_log_id))
-                    elif input.startswith('set_id_'):
-                        index = input.split('_')[-1]
-                        set_id = request.form.get(f'set_id_{index}')
-                        reps = request.form.get(f'reps_{index}')
-                        weight = request.form.get(f'weight_{index}')
-                        c.execute("UPDATE workout_sets SET reps = ?, weight = ? WHERE id = ?",
-                                (reps, weight, set_id))
+                        #             result = c.execute("SELECT id FROM exercises WHERE exercise = ?", (exercise_name,)).fetchone()
+                        #             if result:
+                        #                 exercise_id = result[0]
+                        #                 c.execute("""
+                        #                     UPDATE workout_logs
+                        #                     SET exercise_id = ?
+                        #                     WHERE id = ?
+                        #                 """, (exercise_id, workout_log_id))
+                        #                 conn.commit()
 
-                conn.commit()
-                flash("Workout updated successfully!")
-                return redirect(url_for('view_workout'))
+                        # ====================================
+                        # RETURN TO THIS LATER TO FIX THIS
+                        # ====================================
 
-            except sqlite3.Error:
-                conn.rollback()
-                flash("Could not edit workout. Try again.")
-                return redirect(url_for('view_workout'))
-            finally:
-                conn.close()
+                        if input.startswith('exercise_notes_'):
+                            index = input.split('_')[-1]
+                            workout_log_id = request.form.get(f'workout_log_id_{index}')
+                            exercise_notes = request.form.get(f'exercise_notes_{index}')
+                            c.execute("UPDATE workout_logs SET exercise_notes = ? WHERE id = ?",
+                                    (exercise_notes, workout_log_id))
+                        elif input.startswith('set_id_'):
+                            index = input.split('_')[-1]
+                            set_id = request.form.get(f'set_id_{index}')
+                            reps = request.form.get(f'reps_{index}')
+                            weight = request.form.get(f'weight_{index}')
+                            c.execute("UPDATE workout_sets SET reps = ?, weight = ? WHERE id = ?",
+                                    (reps, weight, set_id))
 
-    # after pressing save changes, this should immediately render with the new changes
+                    flash("Workout updated successfully!")
+                    return redirect(url_for('view_workout'))
+
+                except sqlite3.Error:
+                    conn.rollback()
+                    flash("Could not edit workout. Try again.")
+                    return redirect(url_for('view_workout'))
+
+    #TODO after pressing save changes, this should immediately render with the new changes
     return render_template('edit_workout.html', 
                             workouts=session.get('current_workout', []), 
                             session_date=session_date)
@@ -476,16 +447,12 @@ def custom_exercises():
             flash('Custom exercise added successfully!')
             return redirect(url_for('custom_exercises'))
         elif request.form.get('action') == 'view_exercises':
-            conn, c = establish_connection()
-            custom_exercises = display_custom_exercises(c, user_id)
-            close_connection(conn)
+            custom_exercises = get_custom_exercises(user_id)
             if not custom_exercises:
                 flash("No custom exercises have been created")
         elif request.form.get('action') == 'edit_exercises':
             editing_exercise = True
-            conn, c = establish_connection()
-            custom_exercises = display_custom_exercises(c, user_id)
-            close_connection(conn)
+            custom_exercises = get_custom_exercises(user_id)
         elif request.form.get('action').startswith('delete_'):
             action = request.form.get('action')
             exercise_id = action.split('_')[1]
@@ -493,24 +460,21 @@ def custom_exercises():
             if not success:
                 flash("Can't delete this exercise — it's been used in a workout.")
             editing_exercise = True
-            conn, c = establish_connection()
-            custom_exercises = display_custom_exercises(c, user_id)
-            conn.commit()
-            close_connection(conn)
+            custom_exercises = get_custom_exercises(user_id)
         elif request.form.get('action') == 'save_changes':
             old_exercises = request.form.getlist('old_exercise')
             exercise_ids = request.form.getlist('exercise_id')
             new_exercises = request.form.getlist('new_exercise')
-            conn, c = establish_connection()
             for exercise_id, old_exercise, new_exercise in zip(exercise_ids, old_exercises, new_exercises):
                 if old_exercise != new_exercise:
-                    edit_custom_exercises(c, user_id, new_exercise, exercise_id)
-            conn.commit()
-            close_connection(conn)
+                    if not update_custom_exercise(user_id, new_exercise, exercise_id):
+                        flash(f"Couldn't update {old_exercise}.")
             flash("Exercises succesfully edited")
             return redirect(url_for('custom_exercises'))
 
-    return render_template('custom_exercises.html', custom_exercises=custom_exercises, editing_exercise=editing_exercise)
+    return render_template('custom_exercises.html', 
+                           custom_exercises=custom_exercises, 
+                           editing_exercise=editing_exercise)
 
 
 # =============
@@ -527,9 +491,8 @@ def cardio_index():
 @app.route('/log_cardio', methods=['GET', 'POST'])
 @login_required
 def log_cardio():
-    conn, c = establish_connection()
-    cardio_types = display_cardio_types(c)
-    close_connection(conn)
+    cardio_types = get_cardio_types()
+    cardio_type_ids = {row['cardio_type']: row['id'] for row in cardio_types}
     user_id = current_user.id
 
     if request.method == 'POST':
@@ -540,6 +503,7 @@ def log_cardio():
             session['session_notes'] = session_notes
             session['date_selection'] = False
 
+        #TODO consider which of these should be stored as NULL vs 0
         elif request.form.get('action') == 'add_log':
             cardio_type = request.form.get('cardio_type')
             if request.form.get('hours'): hours = int(request.form.get('hours'))
@@ -552,7 +516,11 @@ def log_cardio():
             distance = request.form.get('distance')
             distance_unit = request.form.get('distance_unit')
             intensity = request.form.get('intensity')
-            
+
+            if not distance: distance = None
+            if not distance_unit: distance_unit = None
+            if not intensity: intensity = None
+
             if distance and not distance_unit:
                 flash("Please select either miles or kilometers")
                 return redirect(url_for('log_cardio'))
@@ -569,6 +537,8 @@ def log_cardio():
 
             session['current_logs'].append({
                 'cardio_type': cardio_type,
+                'cardio_type_id': cardio_type_ids.get(cardio_type),
+                'custom_cardio_id': None,
                 'hours': hours,
                 'minutes': minutes,
                 'seconds': seconds,
@@ -583,23 +553,18 @@ def log_cardio():
             if 'current_logs' not in session:
                 flash("Please add at least one cardio log before finishing up the session")
                 return redirect(url_for('log_cardio'))
-            else: 
-                conn, c = establish_connection()
-                session_id = log_cardio_session(c, conn, session['session_date'], session['session_notes'], user_id)
-                current_logs = session['current_logs']
-                for log in current_logs:
-                    log_cardio_log(c, conn, session_id, log['cardio_type'], log['db_duration'], log['distance'], log['distance_unit'], log['intensity'])
-                conn.commit()
-                close_connection(conn)
-                clear_cardio_session()
+            else:
+                grouped_logs = group_logs(session['current_logs'])
+                create_cardio_session(session['session_date'], session['session_notes'], user_id, grouped_logs)
+                clear_cardio_session(session)
                 flash("Cardio Session Logged Successfully!")
                 return redirect(url_for('log_cardio'))
 
         elif request.form.get('action') == 'reset':
-            clear_logs()
+            clear_logs(session)
             return redirect(url_for('log_cardio'))
         elif request.form.get('action') == 'back':
-            clear_cardio_session()
+            clear_cardio_session(session)
             return redirect(url_for('log_cardio'))
 
     return render_template('log_cardio.html', cardio_types=cardio_types, 
@@ -614,7 +579,7 @@ def view_cardio_session():
         session_date = request.form.get('session_date')
         user_id = current_user.id
 
-        cardio_session = display_cardio_session(session_date, user_id)
+        cardio_session = get_cardio_session(session_date, user_id)
         
         session['current_session'] = cardio_session
         session['session_searched'] = True
@@ -635,58 +600,50 @@ def edit_cardio_session(session_date):
 
     if request.method == 'POST':
         if request.form.get('action') == 'save':
-            conn, c = establish_connection()
+            with db_connection() as (conn, c):
+                session_id = request.form.get('session_id')
+                new_session_date = request.form.get('session_date')
 
-            session_id = request.form.get('session_id')
-            new_session_date = request.form.get('session_date')
-            
-            # Update session date if changed
-            if new_session_date and new_session_date != session_date:
-                c.execute("""
-                    UPDATE cardio_sessions
-                    SET session_date = ?
-                    WHERE id = ?
-                    """, (new_session_date, session_id))
-                
-                return redirect(url_for('edit_cardio_session', session_date=new_session_date))
-            
-            # Update session notes
-            session_notes = request.form.get('session_notes')
-            if session_notes:
-                c.execute("""
-                    UPDATE cardio_sessions 
-                    SET session_notes = ? 
-                    WHERE id = ?
-                """, (session_notes, session_id))
+                if new_session_date and new_session_date != session_date:
+                    c.execute("""
+                        UPDATE cardio_sessions
+                        SET session_date = ?
+                        WHERE id = ?
+                        """, (new_session_date, session_id))
 
-            # Update each cardio log
-            for input in request.form:
-                if input.startswith('log_id_'):
-                    index = input.split('_')[-1]
-                    log_id = request.form.get(f'log_id_{index}')
-                    cardio_type = request.form.get(f'cardio_type_{index}')
-                    duration = request.form.get(f'duration_{index}')
-                    distance = request.form.get(f'distance_{index}')
-                    distance_unit = request.form.get(f'distance_unit_{index}')
-                    intensity = request.form.get(f'intensity_{index}')
-                    
-                    # Get cardio_type_id
-                    result = c.execute("SELECT id FROM cardio_types WHERE cardio_type = ?", (cardio_type,)).fetchone()
-                    if result:
-                        cardio_type_id = result[0]
-                        c.execute("""
-                            UPDATE cardio_logs
-                            SET cardio_type_id = ?, duration = ?, distance = ?, distance_unit = ?, intensity = ?
-                            WHERE id = ?
-                        """, (cardio_type_id, duration, 
-                              distance if distance else None, 
-                              distance_unit if distance_unit else None,
-                              intensity if intensity else None,
-                              log_id))
-            
-            conn.commit()
-            conn.close()
-            
+                    return redirect(url_for('edit_cardio_session', session_date=new_session_date))
+
+                session_notes = request.form.get('session_notes')
+                if session_notes:
+                    c.execute("""
+                        UPDATE cardio_sessions
+                        SET session_notes = ?
+                        WHERE id = ?
+                    """, (session_notes, session_id))
+
+                for input in request.form:
+                    if input.startswith('log_id_'):
+                        index = input.split('_')[-1]
+                        log_id = request.form.get(f'log_id_{index}')
+                        cardio_type = request.form.get(f'cardio_type_{index}')
+                        duration = request.form.get(f'duration_{index}')
+                        distance = request.form.get(f'distance_{index}')
+                        distance_unit = request.form.get(f'distance_unit_{index}')
+                        intensity = request.form.get(f'intensity_{index}')
+
+                        result = c.execute("SELECT id FROM cardio_types WHERE cardio_type = ?", (cardio_type,)).fetchone()
+                        if result:
+                            cardio_type_id = result[0]
+                            c.execute("""
+                                UPDATE cardio_logs
+                                SET cardio_type_id = ?, duration = ?, distance = ?, distance_unit = ?, intensity = ?
+                                WHERE id = ?
+                            """, (cardio_type_id, duration,
+                                  distance if distance else None,
+                                  distance_unit if distance_unit else None,
+                                  intensity if intensity else None,
+                                  log_id))
+
             flash("Cardio session updated successfully!")
             return redirect(url_for('view_cardio_session'))
 
@@ -710,40 +667,29 @@ def custom_cardio():
             flash('Custom cardio added successfully!')
             return redirect(url_for('custom_cardio'))
         elif request.form.get('action') == 'view_custom_cardio':
-            conn, c = establish_connection()
-            custom_cardio = display_custom_cardio(c, user_id)
-            close_connection(conn)
+            custom_cardio = get_custom_cardio(user_id)
             if not custom_cardio:
                 flash("No custom cardio types have been created")
         elif request.form.get('action') == 'edit_cardio':
             editing_cardio = True
-            conn, c = establish_connection()
-            custom_cardio = display_custom_cardio(c, user_id)
-            conn.commit()
-            close_connection(conn)
+            custom_cardio = get_custom_cardio(user_id)
         elif request.form.get('action').startswith('delete_'):
             action = request.form.get('action')
             cardio_id = action.split('_')[1]
-            print(user_id)
             success = delete_custom_cardio(user_id, cardio_id)
             if not success:
                 flash("Can't delete this cardio type — it's been used in a session.")
             editing_cardio = True
-            conn, c = establish_connection()
-            custom_cardio = display_custom_cardio(c, user_id)
-            conn.commit()
-            close_connection(conn)
+            custom_cardio = get_custom_cardio(user_id)
         elif request.form.get('action') == 'save_changes':
             old_cardio = request.form.getlist('old_cardio')
             cardio_id = request.form.getlist('cardio_id')
             new_cardio = request.form.getlist('new_cardio')
 
-            conn, c = establish_connection()
             for cardio_id, old_card, new_card in zip(cardio_id, old_cardio, new_cardio):
                 if old_card != new_card:
-                    edit_custom_cardio(c, user_id, new_card, cardio_id)
-            conn.commit()
-            close_connection(conn)
+                    if not update_custom_cardio(user_id, new_card, cardio_id):
+                        flash(f"Couldn't update {old_card}.")
 
     return render_template('custom_cardio.html', custom_cardio=custom_cardio, editing_cardio=editing_cardio)
 

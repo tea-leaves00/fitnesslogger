@@ -25,9 +25,9 @@
             <ul class="custom_cardio_list">
             {% for cardio in custom_cardio %}
                 <li>
-                    <input type="hidden" name="old_cardio" value="{{ cardio.name }}">
+                    <input type="hidden" name="old_cardio" value="{{ cardio.cardio_type }}">
                     <input type="hidden" name="cardio_id" value="{{ cardio.id }}">
-                    <input type="text" name="new_cardio" value="{{ cardio.name }}">
+                    <input type="text" name="new_cardio" value="{{ cardio.cardio_type }}">
                     <button class="delete_button" type="submit" name="action" value="delete_{{ cardio.id }}">
                         <img src="{{ url_for('static', filename='icons/trash.svg') }}" width="15" height="15">
                     </button>
@@ -39,7 +39,7 @@
     {% else %}
         <ul>
         {% for cardio in custom_cardio %}
-            <li>{{ cardio.name }}</li>
+            <li>{{ cardio.cardio_type }}</li>
         {% endfor %}
         </ul>
         <form method="POST">
