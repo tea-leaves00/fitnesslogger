@@ -5,7 +5,7 @@ __pycache__/
 *.db
 .DS_Store
 *.txt
-notes.md
+TODO.md
 .env
 schema.sql
 schema_target.sql

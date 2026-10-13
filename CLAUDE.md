@@ -12,28 +12,34 @@ FitnessLogger is a Flask + SQLite web app for logging weightlifting workouts and
 source venv/bin/activate
 pip install -r requirements.txt
 FLASK_ENV=development python app.py    # runs on http://127.0.0.1:5000, debug=True
+# or: FLASK_ENV=development flask run --debug
 ```
+
+Plain `flask run` (no `--debug`) skips the `app.run(debug=True)` block, so templates and code are cached and edits won't show until restart.
 
 `FLASK_ENV` selects config and database:
 - Unset or `production` → `ProdConfig`, `fitnesslogger.db`
 - Anything else (e.g. `development`) → `DevConfig`, `dev.db`
 
-`app.py` is the only place `FLASK_ENV` is read; it resolves `DevConfig`/`ProdConfig` once via `app.config.from_object(...)`. Everything else (including `sql_functions.py`) reads resolved values off Flask's `current_app.config` at call time rather than re-deriving them — don't reintroduce a second `FLASK_ENV` branch elsewhere.
+`app.py` is the only place `FLASK_ENV` is read; it resolves `DevConfig`/`ProdConfig` once via `app.config.from_object(...)`. Everything else (including `utils/db.py`) reads resolved values off Flask's `current_app.config` at call time rather than re-deriving them — don't reintroduce a second `FLASK_ENV` branch elsewhere.
 
 Secrets (`SECRET_KEY`, `RESEND_API_KEY`) load from `.env` via `config.py`. Transactional email (verification, password reset, forgot-username) goes through Resend.
 
 ## Architecture
 
-**Everything routes through three files:**
+**File layout** (non-route modules live in the `utils/` package):
 - `app.py` — all Flask routes (auth, weightlifting, cardio), each `@login_required` except auth/landing routes. No blueprints; one flat file.
-- `sql_functions.py` — every DB access function, imported into `app.py` with `from sql_functions import *`. This is also where email-sending and token-verification logic lives.
+- `utils/db.py` — every DB access function (including auth-token save/verify), imported into `app.py` with `from utils.db import *`.
+- `utils/email_service.py` — Resend calls for verification, password-reset, and forgot-username emails.
+- `utils/session_helpers.py` — non-DB helpers: token generation, duration math, grouping session data for inserts (`group_sets`/`group_logs`), and the `clear_*` session-pruning functions.
+- `utils/user_class.py` — Flask-Login `User` model.
 - `config.py` — `DevConfig`/`ProdConfig` pick DB path, base URL, and cookie security settings.
 
-**DB connection pattern:** every `sql_functions.py` function that touches the DB calls `establish_connection()` (reads `DB_PATH` off `current_app.config`, opens a new sqlite3 connection with `row_factory = sqlite3.Row` and `PRAGMA foreign_keys = ON`, and raises `FileNotFoundError` if the db file is missing) and must call `conn.close()` itself when done — there's no connection pooling or app-level teardown hook. Since `establish_connection()` always returns a valid connection or raises, callers don't need to check for `None`. When a route needs several queries in one request, it calls `establish_connection()` once and passes `c`/`conn` down into helper functions rather than each helper opening its own connection (see `log_workout`/`finish_workout` in `app.py`).
+**DB connection pattern:** `db_connection()` in `utils/db.py` is a context manager used as `with db_connection() as (conn, c):`. It reads `DB_PATH` off `current_app.config` (raising `FileNotFoundError` if the file is missing), opens a sqlite3 connection with `row_factory = sqlite3.Row` and `PRAGMA foreign_keys = ON`, commits on clean exit (including an early `return`), rolls back on exception, and always closes. Each helper opens its own connection this way and never commits/closes manually; multi-statement writes that must be atomic (e.g. `create_workout`, `update_password` clearing the reset token) happen inside one helper's `with` block. No pooling or app-level teardown hook. Read helpers return `sqlite3.Row` (or lists of them); write helpers that target a single row return `c.rowcount == 1`. A few routes (`edit_workout`, `edit_cardio_session`) still use `db_connection()` directly for inline SQL.
 
-**Multi-step logging flow via Flask session:** Logging a workout or cardio session is a multi-request wizard, not a single form post. `log_workout`/`log_cardio` accumulate entries into `session['current_sets']` / `session['current_logs']` across POSTs (`add_set`/`add_log`), then persist everything to the DB on `finish_workout`/`finish_session`, clearing session state afterward via `clear_workout_session()`/`clear_cardio_session()` etc. When editing these routes, keep the session-key names in `app.py` and the corresponding `clear_*` functions in `sql_functions.py` in sync — an unpruned session key silently reappears on the next visit.
+**Multi-step logging flow via Flask session:** Logging a workout or cardio session is a multi-request wizard, not a single form post. `log_workout`/`log_cardio` accumulate entries into `session['current_sets']` / `session['current_logs']` across POSTs (`add_set`/`add_log`), then persist everything to the DB on `finish_workout`/`finish_session`, clearing session state afterward via `clear_workout_session()`/`clear_cardio_session()` etc. When editing these routes, keep the session-key names in `app.py` and the corresponding `clear_*` functions in `utils/session_helpers.py` in sync — an unpruned session key silently reappears on the next visit.
 
-**Standard vs. custom entities:** Exercises and cardio types each have a global table (`exercises`, `cardio_types`) and a per-user table (`custom_exercises`, `custom_cardio`). Logs reference one or the other via nullable FK pairs (`exercise_id`/`custom_exercise_id`, `cardio_type_id`/`custom_cardio_id`) enforced by CHECK constraints requiring exactly one to be set. Queries that display logs `LEFT JOIN` both tables and `COALESCE` the name (see `display_workout`, `display_cardio_session`).
+**Standard vs. custom entities:** Exercises and cardio types each have a global table (`exercises`, `cardio_types`) and a per-user table (`custom_exercises`, `custom_cardio`). Logs reference one or the other via nullable FK pairs (`exercise_id`/`custom_exercise_id`, `cardio_type_id`/`custom_cardio_id`) enforced by CHECK constraints requiring exactly one to be set. Queries that display logs `LEFT JOIN` both tables and `COALESCE` the name (see `get_workout`, `get_cardio_session`).
 
 **Schema:** `schema.sql` is the current schema reference (gitignored — not tracked, so don't assume it reflects what's actually in `main`/prod). Actual schema history lives in `migrations/`, applied as sequential numbered files. `migrationsbestpractices.txt` documents the required workflow for schema changes:
 - Structural changes (renames, type changes, constraints, dropping `AUTOINCREMENT`) require a full table rebuild: create new table → `INSERT...SELECT` with explicit column mapping → drop old → rename into place. SQLite can't do these in place.
@@ -43,8 +49,10 @@ Secrets (`SECRET_KEY`, `RESEND_API_KEY`) load from `.env` via `config.py`. Trans
 
 **Backup:** `scripts/backup.py` uses SQLite's online backup API to snapshot the prod DB to a timestamped file; paths are hardcoded to a specific deploy host, not portable as-is.
 
-## Known rough edges (from notes.txt / in-code TODOs)
+## Known rough edges (from TODO.md / in-code TODOs)
 
-- `edit_workout` in `app.py` has a large dead/commented-out block for exercise-name editing left mid-refactor — don't assume it's live code.
-- Several `sql_functions.py` functions catch bare `sqlite3.Error` broadly rather than the specific error; `notes.txt` flags this as intentional cleanup debt ("no Base Errors ... should always be as specific as needed"), so prefer narrowing exception handling over adding more broad catches when editing nearby code.
-- The eventual direction (per `notes.txt`) is toward an app-factory + Blueprints structure and a normalized-from-scratch DB rewrite — don't assume the current flat single-file layout is the intended end state, but don't restructure unprompted either.
+`TODO.md` (Refactors / Features / Bugs) is the parking lot for deferred work.
+
+- `edit_workout` in `app.py` has a large dead/commented-out block for exercise-name editing left mid-refactor — don't assume it's live code. It and `edit_cardio_session` also do raw SQL inline instead of going through `utils/db.py`.
+- Prefer catching specific exceptions (e.g. `sqlite3.IntegrityError`) over broad `sqlite3.Error`/`Exception` catches; `edit_workout` still has a broad one.
+- The eventual direction is toward an app-factory + Blueprints structure — don't assume the current flat single-file layout is the intended end state, but don't restructure unprompted either.
