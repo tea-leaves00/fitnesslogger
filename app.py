@@ -339,22 +339,17 @@ def log_workout():
 @login_required
 def view_workout():
     if request.method == 'POST':
-        session_date = request.form.get('session_date')
-        #NOTE should the session date be stored in session?
-        session['session_date'] = session_date
-        user_id = current_user.id
-
-        workouts = get_workout(session_date, user_id)
-        
-        session['current_workout'] = workouts
-        session['workout_searched'] = True
-        session.modified = True
+        session['session_date'] = request.form.get('session_date')
+        workout_searched = True
     else:
-        session['workout_searched'] = False
+        workout_searched = False
 
-    return render_template('view_workout.html', 
-                           workouts=session.get('current_workout', []), 
-                           workout_searched=session.get('workout_searched', False))
+    session_date = session.get('session_date')
+    workouts = get_workout(session_date, current_user.id) if session_date else []
+
+    return render_template('view_workout.html',
+                           workouts=workouts,
+                           workout_searched=workout_searched)
 
 # == EDIT WORKOUT == 
 @app.route('/edit_workout/<session_date>', methods=['GET', 'POST'])
