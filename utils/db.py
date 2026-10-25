@@ -166,7 +166,7 @@ def get_workout(session_date, user_id):
         workouts = c.execute("""
             SELECT workout_sessions.id AS session_id, workout_sessions.session_date, workout_sessions.session_notes,
             workout_logs.id AS workout_log_id, COALESCE(exercises.exercise, custom_exercises.exercise) AS exercise,
-            workout_logs.exercise_notes,
+            workout_logs.exercise_id, workout_logs.custom_exercise_id, workout_logs.exercise_notes,
             workout_sets.id AS set_id, workout_sets.set_number, workout_sets.reps, workout_sets.weight,
             COALESCE(exercises.is_time_based, custom_exercises.is_time_based, 0) AS is_time_based
             FROM workout_sessions
@@ -196,6 +196,29 @@ def get_cardio_session(session_date, user_id):
     
 
 # == UPDATE ==
+def update_workout(user_id, session_updates, log_updates, set_updates):
+    with db_connection() as (conn, c):
+        c.executemany("""
+            UPDATE workout_sessions SET session_date = ?, session_notes = ?
+            WHERE id = ? AND user_id = ?
+            """, [(session_date, session_notes, session_id, user_id)
+                  for session_date, session_notes, session_id in session_updates])
+
+        c.executemany("""
+            UPDATE workout_logs SET exercise_id = ?, custom_exercise_id = ?, exercise_notes = ?
+            WHERE id = ? AND session_id IN (SELECT id FROM workout_sessions WHERE user_id = ?)
+            """, [(exercise_id, custom_exercise_id, exercise_notes, workout_log_id, user_id)
+                  for exercise_id, custom_exercise_id, exercise_notes, workout_log_id in log_updates])
+
+        c.executemany("""
+            UPDATE workout_sets SET reps = ?, weight = ?
+            WHERE id = ? AND workout_log_id IN (
+                SELECT workout_logs.id FROM workout_logs
+                JOIN workout_sessions ON workout_logs.session_id = workout_sessions.id
+                WHERE workout_sessions.user_id = ?)
+            """, [(reps, weight, set_id, user_id)
+                  for reps, weight, set_id in set_updates])
+
 def update_custom_exercise(user_id, new_exercise, exercise_id):
     with db_connection() as (conn, c):
         c.execute("UPDATE custom_exercises SET exercise = ? WHERE user_id = ? AND id = ?", (new_exercise, user_id, exercise_id))

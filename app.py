@@ -355,73 +355,64 @@ def view_workout():
 @app.route('/edit_workout/<session_date>', methods=['GET', 'POST'])
 @login_required
 def edit_workout(session_date):
-    user_id = current_user.id
-    
+    exercises = get_exercises()
+    custom_exercises = get_custom_exercises(current_user.id)
+    exercise_ids = {row['exercise']: row['id'] for row in exercises}
+    custom_exercise_ids = {row['exercise']: row['id'] for row in custom_exercises}
+
     if request.method == 'POST':
-        if request.form.get('action') == 'save':
-            with db_connection() as (conn, c):
-                try:
-                    session_id = request.form.get('session_id')
-                    new_session_date = request.form.get('session_date')
-                    if new_session_date and new_session_date != session_date:
-                        c.execute("UPDATE workout_sessions SET session_date = ? WHERE id = ?",
-                                (new_session_date, session_id))
-                        return redirect(url_for('edit_workout', session_date=new_session_date))
+        session_updates = []
+        for session_id in request.form.getlist('session_id'):
+            new_session_date = request.form.get(f'session_date_{session_id}')
+            session_notes = request.form.get(f'session_notes_{session_id}')
+            session_updates.append((new_session_date, session_notes if session_notes else None, session_id))
 
-                    session_notes = request.form.get('session_notes')
-                    if session_notes:
-                        c.execute("UPDATE workout_sessions SET session_notes = ? WHERE id = ?",
-                                (session_notes, session_id))
+        log_updates = []
+        for workout_log_id in request.form.getlist('workout_log_id'):
+            exercise = request.form.get(f'exercise_{workout_log_id}')
+            custom_exercise = request.form.get(f'custom_exercise_{workout_log_id}')
+            exercise_notes = request.form.get(f'exercise_notes_{workout_log_id}')
 
-                    for input in request.form:
-                        # ====================================
-                        #FIXME RETURN TO THIS LATER TO FIX THIS
-                        # ====================================
+            if exercise and custom_exercise:
+                flash("Please select either a standard exercise OR a custom exercise, not both")
+                return redirect(url_for('edit_workout', session_date=session_date))
+            if not exercise and not custom_exercise:
+                flash("Please select an exercise")
+                return redirect(url_for('edit_workout', session_date=session_date))
 
-                        # if input.startswith('exercise_name_'):
-                        #             index = input.split('_')[-1]
-                        #             workout_log_id = request.form.get(f'workout_log_id_{index}')
-                        #             exercise_name = request.form.get(f'exercise_name_{index}')
+            exercise_id = exercise_ids.get(exercise) if exercise else None
+            custom_exercise_id = custom_exercise_ids.get(custom_exercise) if custom_exercise else None
+            if not exercise_id and not custom_exercise_id:
+                flash(f"'{exercise if exercise else custom_exercise}' isn't in your exercise list")
+                return redirect(url_for('edit_workout', session_date=session_date))
 
-                        #             result = c.execute("SELECT id FROM exercises WHERE exercise = ?", (exercise_name,)).fetchone()
-                        #             if result:
-                        #                 exercise_id = result[0]
-                        #                 c.execute("""
-                        #                     UPDATE workout_logs
-                        #                     SET exercise_id = ?
-                        #                     WHERE id = ?
-                        #                 """, (exercise_id, workout_log_id))
-                        #                 conn.commit()
+            log_updates.append((exercise_id, custom_exercise_id,
+                                exercise_notes if exercise_notes else None, workout_log_id))
 
-                        # ====================================
-                        # RETURN TO THIS LATER TO FIX THIS
-                        # ====================================
+        set_updates = []
+        for set_id in request.form.getlist('set_id'):
+            reps = request.form.get(f'reps_{set_id}')
+            weight = request.form.get(f'weight_{set_id}')
+            if not reps:
+                flash("Reps are required")
+                return redirect(url_for('edit_workout', session_date=session_date))
+            set_updates.append((reps, weight if weight else None, set_id))
 
-                        if input.startswith('exercise_notes_'):
-                            index = input.split('_')[-1]
-                            workout_log_id = request.form.get(f'workout_log_id_{index}')
-                            exercise_notes = request.form.get(f'exercise_notes_{index}')
-                            c.execute("UPDATE workout_logs SET exercise_notes = ? WHERE id = ?",
-                                    (exercise_notes, workout_log_id))
-                        elif input.startswith('set_id_'):
-                            index = input.split('_')[-1]
-                            set_id = request.form.get(f'set_id_{index}')
-                            reps = request.form.get(f'reps_{index}')
-                            weight = request.form.get(f'weight_{index}')
-                            c.execute("UPDATE workout_sets SET reps = ?, weight = ? WHERE id = ?",
-                                    (reps, weight, set_id))
+        try:
+            update_workout(current_user.id, session_updates, log_updates, set_updates)
+        except sqlite3.IntegrityError:
+            flash("Could not edit workout. Please try again.")
+            return redirect(url_for('edit_workout', session_date=session_date))
 
-                    flash("Workout updated successfully!")
-                    return redirect(url_for('view_workout'))
+        session.pop('session_date', None)
+        flash("Workout updated successfully! View another workout?")
+        return redirect(url_for('view_workout'))
 
-                except sqlite3.Error:
-                    conn.rollback()
-                    flash("Could not edit workout. Try again.")
-                    return redirect(url_for('view_workout'))
-
-    #TODO after pressing save changes, this should immediately render with the new changes
-    return render_template('edit_workout.html', 
-                            workouts=session.get('current_workout', []), 
+    workouts = get_workout(session_date, current_user.id)
+    return render_template('edit_workout.html',
+                            workouts=workouts,
+                            exercises=exercises,
+                            custom_exercises=custom_exercises,
                             session_date=session_date)
 
 # == CUSTOM EXERCISES ==

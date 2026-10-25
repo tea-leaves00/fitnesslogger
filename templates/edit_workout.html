@@ -8,36 +8,76 @@
 {% if workouts %}
     <form action="{{ url_for('edit_workout', session_date=session_date) }}" method="POST">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        {% for session_id, session_date, session_notes, 
-            workout_log_id, exercise_name, exercise_notes, 
-            set_id, set_number, reps, weight, is_time_based in workouts %}
-            {% if loop.first %}
-                <input type="hidden" name="session_id" value="{{ session_id }}">
-                <input type="date" name="session_date" value="{{ session_date }}">
-                <label>Session Notes:</label>
-                <input type="text" name="session_notes" value="{{ session_notes if session_notes else '' }}">
+        {% for workout in workouts %}
+            {% if loop.first or (loop.previtem and loop.previtem.session_id != workout.session_id) %}
+            {% if not loop.first %}
+                <p>-------------------------------</p>
+            {% endif %}
+            <input type="hidden" name="session_id" value="{{ workout.session_id }}">
+            <input type="date" name="session_date_{{ workout.session_id }}" value="{{ workout.session_date }}">
+            <label>Session Notes:</label>
+            <input type="text" name="session_notes_{{ workout.session_id }}" value="{{ workout.session_notes if workout.session_notes else '' }}">
             {% endif %}
 
-            {% if loop.first or (loop.previtem and loop.previtem[4] != exercise_name) %}
-                <input type="hidden" name="workout_log_id_{{ loop.index }}" value="{{ workout_log_id }}">
-                <label>Exercise Name:</label>
-                <input type="text" name="exercise_name_{{ loop.index }}" value="{{ exercise_name }}">
-                <label>Exercise Notes:</label>
-                <input type="text" name="exercise_notes_{{ loop.index }}" value="{{ exercise_notes if exercise_notes else '' }}">
+            {% if loop.first or (loop.previtem and loop.previtem.workout_log_id != workout.workout_log_id) %}
+            <input type="hidden" name="workout_log_id" value="{{ workout.workout_log_id }}">
+            <span class="exercise_pair">
+                <label>Exercise:</label>
+                <input type="text" name="exercise_{{ workout.workout_log_id }}" list="exercise_list"
+                    value="{{ workout.exercise if workout.exercise_id else '' }}">
+                {% if custom_exercises %}
+                    <label>Custom Exercise:</label>
+                    <input type="text" name="custom_exercise_{{ workout.workout_log_id }}" list="custom_exercise_list"
+                        value="{{ workout.exercise if workout.custom_exercise_id else '' }}">
+                {% endif %}
+            </span>
+            <label>Exercise Notes:</label>
+            <input type="text" name="exercise_notes_{{ workout.workout_log_id }}" value="{{ workout.exercise_notes if workout.exercise_notes else '' }}">
             {% endif %}
 
             <p>
-                Set {{ set_number }}:
-                <input type="hidden" name="set_id_{{ loop.index }}" value="{{ set_id }}"> 
-                <input type="number" name="reps_{{ loop.index }}" value="{{ reps }}" style="width: 60px;"> reps, 
-                <input type="number" name="weight_{{ loop.index }}" value="{{ weight if weight else '' }}" style="width: 60px;"> lbs
+                Set {{ workout.set_number }}:
+                <input type="hidden" name="set_id" value="{{ workout.set_id }}">
+                <input type="number" name="reps_{{ workout.set_id }}" value="{{ workout.reps }}" min="1" style="width: 60px;"> {{ 'seconds' if workout.is_time_based else 'reps' }}, 
+                <input type="number" step="0.5" min="0" name="weight_{{ workout.set_id }}" value="{{ workout.weight if workout.weight else '' }}" style="width: 60px;"> lbs
             </p>
         {% endfor %}
 
-        <button type="submit" name="action" value="save">Save Changes</button>
+        <datalist id="exercise_list">
+            {% for exercise in exercises %}
+                <option value="{{ exercise.exercise }}">
+            {% endfor %}
+        </datalist>
+        <datalist id="custom_exercise_list">
+            {% for custom_exercise in custom_exercises %}
+                <option value="{{ custom_exercise.exercise }}">
+            {% endfor %}
+        </datalist>
+
+        <button type="submit">Save Changes</button>
+        <a href="{{ url_for('view_workout') }}">Cancel</a>
     </form>
 {% else %}
     <strong><p>No workouts found.</p></strong>
 {% endif %}
 
+{% endblock %}
+
+<!-- JAVASCRIPT -->
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Typing into one field of a pair clears the other, so only one exercise gets submitted
+    document.querySelectorAll('.exercise_pair').forEach(function(pair) {
+        const inputs = pair.querySelectorAll('input');
+        inputs.forEach(function(input) {
+            input.addEventListener('input', function() {
+                inputs.forEach(function(other) {
+                    if (other !== input && input.value !== '') other.value = '';
+                });
+            });
+        });
+    });
+});
+</script>
 {% endblock %}
