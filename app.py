@@ -335,6 +335,7 @@ def log_workout():
                         
 
 # == VIEW WORKOUT ==
+#NOTE should this use session date url param as well?
 @app.route('/view_workout', methods= ['GET', 'POST'])
 @login_required
 def view_workout():

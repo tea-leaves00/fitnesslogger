@@ -20,6 +20,8 @@
 
         {% if loop.previtem and loop.previtem.session_id != workout.session_id %}
             <p>-------------------------------</p>
+            <p>Session Notes: {{ workout.session_notes }}</p>
+            <p>-----------------</p>
         {% endif%}
 
         {% if loop.first or (loop.previtem and loop.previtem.exercise != workout.exercise) %}
