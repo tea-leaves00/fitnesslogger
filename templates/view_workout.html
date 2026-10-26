@@ -5,7 +5,7 @@
 
 <form action="{{ url_for('view_workout') }}" method="POST">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="date" name="session_date" value="{{ session.get('session_date', '') }}">
+    <input type="date" name="session_date" value="{{ session.get('view_workout_date', '') }}">
     <button type="submit" name="action" value="view">View Workout</button>
 </form>
 

@@ -335,17 +335,16 @@ def log_workout():
                         
 
 # == VIEW WORKOUT ==
-#NOTE should this use session date url param as well?
 @app.route('/view_workout', methods= ['GET', 'POST'])
 @login_required
 def view_workout():
     if request.method == 'POST':
-        session['session_date'] = request.form.get('session_date')
+        session['view_workout_date'] = request.form.get('session_date')
         workout_searched = True
     else:
         workout_searched = False
 
-    session_date = session.get('session_date')
+    session_date = session.get('view_workout_date')
     workouts = get_workout(session_date, current_user.id) if session_date else []
 
     return render_template('view_workout.html',
@@ -405,7 +404,7 @@ def edit_workout(session_date):
             flash("Could not edit workout. Please try again.")
             return redirect(url_for('edit_workout', session_date=session_date))
 
-        session.pop('session_date', None)
+        session.pop('view_workout_date', None)
         flash("Workout updated successfully! View another workout?")
         return redirect(url_for('view_workout'))
 
