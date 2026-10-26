@@ -562,20 +562,17 @@ def log_cardio():
 @login_required
 def view_cardio_session():
     if request.method == 'POST':
-        session_date = request.form.get('session_date')
-        user_id = current_user.id
-
-        cardio_session = get_cardio_session(session_date, user_id)
-        
-        session['current_session'] = cardio_session
-        session['session_searched'] = True
-        session.modified = True
+        session['view_cardio_date'] = request.form.get('session_date')
+        session_searched = True
     else:
-        session['session_searched'] = False
+        session_searched = False
 
-      
-    return render_template('view_cardio_session.html', cardio_session=session.get('current_session', []), 
-                           session_searched=session.get('session_searched', False))
+    session_date = session.get('view_cardio_date')
+    cardio_session = get_cardio_session(session_date, current_user.id) if session_date else []
+
+    return render_template('view_cardio_session.html',
+                           cardio_session=cardio_session,
+                           session_searched=session_searched)
 
 # == EDIT CARDIO SESSION == 
 @app.route('/edit_cardio_session/<session_date>', methods=['GET', 'POST'])

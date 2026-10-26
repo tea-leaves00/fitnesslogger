@@ -190,7 +190,7 @@ def get_cardio_session(session_date, user_id):
             LEFT JOIN cardio_types ON cardio_logs.cardio_type_id = cardio_types.id
             LEFT JOIN custom_cardio ON cardio_logs.custom_cardio_id = custom_cardio.id
             WHERE cardio_sessions.session_date = ? AND cardio_sessions.user_id = ?
-            ORDER by cardio_logs.id
+            ORDER by cardio_sessions.id, cardio_logs.id
             """, (session_date, user_id)).fetchall()
         return session
     
