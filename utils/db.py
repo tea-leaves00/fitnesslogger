@@ -184,7 +184,8 @@ def get_cardio_session(session_date, user_id):
         session = c.execute("""
             SELECT cardio_sessions.id AS session_id, cardio_sessions.session_date, cardio_sessions.session_notes,
             cardio_logs.id AS log_id, cardio_logs.duration, cardio_logs.distance, cardio_logs.distance_unit, cardio_logs.intensity,
-            COALESCE(cardio_types.cardio_type, custom_cardio.cardio_type) AS cardio_type
+            COALESCE(cardio_types.cardio_type, custom_cardio.cardio_type) AS cardio_type,
+            cardio_logs.cardio_type_id, cardio_logs.custom_cardio_id
             FROM cardio_sessions
             JOIN cardio_logs ON cardio_sessions.id = cardio_logs.cardio_session_id
             LEFT JOIN cardio_types ON cardio_logs.cardio_type_id = cardio_types.id
@@ -218,6 +219,21 @@ def update_workout(user_id, session_updates, log_updates, set_updates):
                 WHERE workout_sessions.user_id = ?)
             """, [(reps, weight, set_id, user_id)
                   for reps, weight, set_id in set_updates])
+
+def update_cardio_session(user_id, session_updates, log_updates):
+    with db_connection() as (conn, c):
+        c.executemany("""
+            UPDATE cardio_sessions SET session_date = ?, session_notes = ?
+            WHERE id = ? AND user_id = ?
+            """, [(session_date, session_notes, session_id, user_id)
+                  for session_date, session_notes, session_id in session_updates])
+
+        c.executemany("""
+            UPDATE cardio_logs
+            SET cardio_type_id = ?, custom_cardio_id = ?, duration = ?, distance = ?, distance_unit = ?, intensity = ?
+            WHERE id = ? AND cardio_session_id IN (SELECT id FROM cardio_sessions WHERE user_id = ?)
+            """, [(cardio_type_id, custom_cardio_id, duration, distance, distance_unit, intensity, log_id, user_id)
+                  for cardio_type_id, custom_cardio_id, duration, distance, distance_unit, intensity, log_id in log_updates])
 
 def update_custom_exercise(user_id, new_exercise, exercise_id):
     with db_connection() as (conn, c):

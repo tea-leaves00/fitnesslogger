@@ -8,37 +8,83 @@
 {% if cardio_session %}
     <form action="{{ url_for('edit_cardio_session', session_date=session_date) }}" method="POST">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        {% for session_id, sess_date, session_notes, log_id, duration, distance, distance_unit, intensity, cardio_type_name in cardio_session %}
-            {% if loop.first %}
-                <input type="hidden" name="session_id" value="{{ session_id }}">
-                <input type="date" name="session_date" value="{{ sess_date }}">
+        {% for log in cardio_session %}
+            {% if loop.first or (loop.previtem and loop.previtem.session_id != log.session_id) %}
+                {% if not loop.first %}
+                    <p>-------------------------------</p>
+                {% endif %}
+                <input type="hidden" name="session_id" value="{{ log.session_id }}">
+                <input type="date" name="session_date_{{ log.session_id }}" value="{{ log.session_date }}">
                 <label>Session Notes:</label>
-                <input type="text" name="session_notes" value="{{ session_notes if session_notes else '' }}">
+                <input type="text" name="session_notes_{{ log.session_id }}" value="{{ log.session_notes if log.session_notes else '' }}">
             {% endif %}
 
+            {% set duration = log.duration if log.duration else 0 %}
             <p>
-                <input type="hidden" name="log_id_{{ loop.index }}" value="{{ log_id }}">
-                <label>Cardio Type:</label>
-                <input type="text" name="cardio_type_{{ loop.index }}" value="{{ cardio_type_name }}">
-                
-                <label>Duration (seconds):</label>
-                <input type="number" name="duration_{{ loop.index }}" value="{{ duration }}" style="width: 80px;">
-                
+                <input type="hidden" name="log_id" value="{{ log.log_id }}">
+                <span class="cardio_pair">
+                    <label>Cardio Type:</label>
+                    <input type="text" name="cardio_type_{{ log.log_id }}" list="cardio_type_list"
+                        value="{{ log.cardio_type if log.cardio_type_id else '' }}">
+                    {% if custom_cardio %}
+                        <label>Custom Cardio:</label>
+                        <input type="text" name="custom_cardio_{{ log.log_id }}" list="custom_cardio_list"
+                            value="{{ log.cardio_type if log.custom_cardio_id else '' }}">
+                    {% endif %}
+                </span>
+
+                <label>Duration:</label>
+                <input type="number" name="hours_{{ log.log_id }}" value="{{ duration // 3600 }}" min="0" max="24" style="width: 50px;"> h
+                <input type="number" name="minutes_{{ log.log_id }}" value="{{ duration % 3600 // 60 }}" min="0" max="59" style="width: 50px;"> m
+                <input type="number" name="seconds_{{ log.log_id }}" value="{{ duration % 60 }}" min="0" max="59" style="width: 50px;"> s
+
                 <label>Distance:</label>
-                <input type="number" step="0.01" name="distance_{{ loop.index }}" value="{{ distance if distance else '' }}" style="width: 80px;">
-                
-                <label>Unit:</label>
-                <input type="text" name="distance_unit_{{ loop.index }}" value="{{ distance_unit if distance_unit else '' }}" style="width: 60px;">
-                
-                <label>Intensity:</label>
-                <input type="number" name="intensity_{{ loop.index }}" value="{{ intensity if intensity else '' }}" style="width: 60px;">
+                <input type="number" step="0.01" min="0" name="distance_{{ log.log_id }}" value="{{ log.distance if log.distance else '' }}" style="width: 80px;">
+                <select name="distance_unit_{{ log.log_id }}">
+                    <option value="">--</option>
+                    <option value="mi" {% if log.distance_unit == 'mi' %}selected{% endif %}>Miles</option>
+                    <option value="km" {% if log.distance_unit == 'km' %}selected{% endif %}>Kilometers</option>
+                </select>
+
+                <label>Intensity (1-10):</label>
+                <input type="number" min="1" max="10" name="intensity_{{ log.log_id }}" value="{{ log.intensity if log.intensity else '' }}" style="width: 60px;">
             </p>
         {% endfor %}
 
-        <button type="submit" name="action" value="save">Save Changes</button>
+        <datalist id="cardio_type_list">
+            {% for cardio_type in cardio_types %}
+                <option value="{{ cardio_type.cardio_type }}">
+            {% endfor %}
+        </datalist>
+        <datalist id="custom_cardio_list">
+            {% for custom_cardio_type in custom_cardio %}
+                <option value="{{ custom_cardio_type.cardio_type }}">
+            {% endfor %}
+        </datalist>
+
+        <button type="submit">Save Changes</button>
+        <a href="{{ url_for('view_cardio_session') }}">Cancel</a>
     </form>
 {% else %}
     <p>No cardio session found.</p>
 {% endif %}
 
+{% endblock %}
+
+<!-- JAVASCRIPT -->
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.cardio_pair').forEach(function(pair) {
+        const inputs = pair.querySelectorAll('input');
+        inputs.forEach(function(input) {
+            input.addEventListener('input', function() {
+                inputs.forEach(function(other) {
+                    if (other !== input && input.value !== '') other.value = '';
+                });
+            });
+        });
+    });
+});
+</script>
 {% endblock %}

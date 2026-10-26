@@ -578,59 +578,78 @@ def view_cardio_session():
 @app.route('/edit_cardio_session/<session_date>', methods=['GET', 'POST'])
 @login_required
 def edit_cardio_session(session_date):
-    user_id = current_user.id
-    cardio_session = session.get('current_session', [])
+    cardio_types = get_cardio_types()
+    custom_cardio = get_custom_cardio(current_user.id)
+    cardio_type_ids = {row['cardio_type']: row['id'] for row in cardio_types}
+    custom_cardio_ids = {row['cardio_type']: row['id'] for row in custom_cardio}
 
     if request.method == 'POST':
-        if request.form.get('action') == 'save':
-            with db_connection() as (conn, c):
-                session_id = request.form.get('session_id')
-                new_session_date = request.form.get('session_date')
+        session_updates = []
+        for session_id in request.form.getlist('session_id'):
+            new_session_date = request.form.get(f'session_date_{session_id}')
+            session_notes = request.form.get(f'session_notes_{session_id}')
+            session_updates.append((new_session_date, session_notes if session_notes else None, session_id))
 
-                if new_session_date and new_session_date != session_date:
-                    c.execute("""
-                        UPDATE cardio_sessions
-                        SET session_date = ?
-                        WHERE id = ?
-                        """, (new_session_date, session_id))
+        log_updates = []
+        for log_id in request.form.getlist('log_id'):
+            cardio_type = request.form.get(f'cardio_type_{log_id}')
+            custom_cardio_type = request.form.get(f'custom_cardio_{log_id}')
+            hours = request.form.get(f'hours_{log_id}')
+            minutes = request.form.get(f'minutes_{log_id}')
+            seconds = request.form.get(f'seconds_{log_id}')
+            distance = request.form.get(f'distance_{log_id}')
+            distance_unit = request.form.get(f'distance_unit_{log_id}')
+            intensity = request.form.get(f'intensity_{log_id}')
 
-                    return redirect(url_for('edit_cardio_session', session_date=new_session_date))
+            if cardio_type and custom_cardio_type:
+                flash("Please select either a standard cardio type OR a custom cardio type, not both")
+                return redirect(url_for('edit_cardio_session', session_date=session_date))
+            if not cardio_type and not custom_cardio_type:
+                flash("Please select a cardio type")
+                return redirect(url_for('edit_cardio_session', session_date=session_date))
 
-                session_notes = request.form.get('session_notes')
-                if session_notes:
-                    c.execute("""
-                        UPDATE cardio_sessions
-                        SET session_notes = ?
-                        WHERE id = ?
-                    """, (session_notes, session_id))
+            cardio_type_id = cardio_type_ids.get(cardio_type) if cardio_type else None
+            custom_cardio_id = custom_cardio_ids.get(custom_cardio_type) if custom_cardio_type else None
+            if not cardio_type_id and not custom_cardio_id:
+                flash(f"'{cardio_type if cardio_type else custom_cardio_type}' isn't in your cardio list")
+                return redirect(url_for('edit_cardio_session', session_date=session_date))
 
-                for input in request.form:
-                    if input.startswith('log_id_'):
-                        index = input.split('_')[-1]
-                        log_id = request.form.get(f'log_id_{index}')
-                        cardio_type = request.form.get(f'cardio_type_{index}')
-                        duration = request.form.get(f'duration_{index}')
-                        distance = request.form.get(f'distance_{index}')
-                        distance_unit = request.form.get(f'distance_unit_{index}')
-                        intensity = request.form.get(f'intensity_{index}')
+            duration = get_db_duration(int(hours) if hours else 0,
+                                       int(minutes) if minutes else 0,
+                                       int(seconds) if seconds else 0)
 
-                        result = c.execute("SELECT id FROM cardio_types WHERE cardio_type = ?", (cardio_type,)).fetchone()
-                        if result:
-                            cardio_type_id = result[0]
-                            c.execute("""
-                                UPDATE cardio_logs
-                                SET cardio_type_id = ?, duration = ?, distance = ?, distance_unit = ?, intensity = ?
-                                WHERE id = ?
-                            """, (cardio_type_id, duration,
-                                  distance if distance else None,
-                                  distance_unit if distance_unit else None,
-                                  intensity if intensity else None,
-                                  log_id))
+            if distance and not distance_unit:
+                flash("Please select either miles or kilometers")
+                return redirect(url_for('edit_cardio_session', session_date=session_date))
+            if distance_unit and not distance:
+                flash("Please enter distance")
+                return redirect(url_for('edit_cardio_session', session_date=session_date))
+            if not distance and not duration:
+                flash("Please enter either distance or duration")
+                return redirect(url_for('edit_cardio_session', session_date=session_date))
 
-            flash("Cardio session updated successfully!")
-            return redirect(url_for('view_cardio_session'))
+            log_updates.append((cardio_type_id, custom_cardio_id, duration,
+                                distance if distance else None,
+                                distance_unit if distance_unit else None,
+                                intensity if intensity else None,
+                                log_id))
 
-    return render_template('edit_cardio_session.html', cardio_session=cardio_session, session_date=session_date)
+        try:
+            update_cardio_session(current_user.id, session_updates, log_updates)
+        except sqlite3.IntegrityError:
+            flash("Could not edit cardio session. Please try again.")
+            return redirect(url_for('edit_cardio_session', session_date=session_date))
+
+        session.pop('view_cardio_date', None)
+        flash("Cardio session updated successfully! View another session?")
+        return redirect(url_for('view_cardio_session'))
+
+    cardio_session = get_cardio_session(session_date, current_user.id)
+    return render_template('edit_cardio_session.html',
+                           cardio_session=cardio_session,
+                           cardio_types=cardio_types,
+                           custom_cardio=custom_cardio,
+                           session_date=session_date)
 
 # == CUSTOM CARDIO ==
 @app.route('/custom_cardio', methods=['GET', 'POST'])
