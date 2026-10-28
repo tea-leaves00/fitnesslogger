@@ -492,7 +492,6 @@ def log_cardio():
             session['session_notes'] = session_notes
             session['date_selection'] = False
 
-        #TODO consider which of these should be stored as NULL vs 0
         elif request.form.get('action') == 'add_log':
             cardio_type = request.form.get('cardio_type')
             custom_cardio_type = request.form.get('custom_cardio')
@@ -542,7 +541,7 @@ def log_cardio():
                 'hours': hours,
                 'minutes': minutes,
                 'seconds': seconds,
-                'db_duration': db_duration,
+                'db_duration': db_duration if db_duration else None,
                 'distance': distance,
                 'distance_unit': distance_unit,
                 'intensity': intensity
@@ -643,7 +642,8 @@ def edit_cardio_session(session_date):
                 flash("Please enter either distance or duration")
                 return redirect(url_for('edit_cardio_session', session_date=session_date))
 
-            log_updates.append((cardio_type_id, custom_cardio_id, duration,
+            log_updates.append((cardio_type_id, custom_cardio_id,
+                                duration if duration else None,
                                 distance if distance else None,
                                 distance_unit if distance_unit else None,
                                 intensity if intensity else None,
