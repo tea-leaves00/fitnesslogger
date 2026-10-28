@@ -3,7 +3,7 @@
 
 {% block cardio_content %}
 {% if date_selection %}
-<form action="/log_cardio" method="POST">
+<form action="{{ url_for('log_cardio') }}" method="POST">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label for="session_date" class="date_and_notes">Session Date</label>
     <input type="date" id="session_date" class="date_and_notes" name="session_date" value="{{ session.get('session_date', '') }}" required>
@@ -15,7 +15,7 @@
 {% endif %}
 
 {% if not date_selection %}
-<form action="/log_cardio" method="POST">
+<form action="{{ url_for('log_cardio') }}" method="POST">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <!-- Cardio Logs -->
     <table>
@@ -46,23 +46,32 @@
 
         <tr>
             <td>
-                <select name="cardio_type" id="cardio_type">
-                    {% if cardio_types %}
-                        {% for cardio_type in cardio_types %}
-                        <option value="{{ cardio_type.cardio_type }}">{{ cardio_type.cardio_type }}</option>
-                        {% endfor %}
-                    {% endif %}
+                <label for="cardio_type_select">Cardio Types</label>
+                <select name="cardio_type" id="cardio_type_select">
+                    <option value="" selected>-- Select Cardio Type --</option>
+                    {% for cardio_type in cardio_types %}
+                    <option value="{{ cardio_type.cardio_type }}">{{ cardio_type.cardio_type }}</option>
+                    {% endfor %}
                 </select>
+                {% if custom_cardio %}
+                    <label for="custom_cardio_select">Custom Cardio</label>
+                    <select name="custom_cardio" id="custom_cardio_select">
+                        <option value="" selected>-- Select Custom Cardio --</option>
+                        {% for custom_cardio_type in custom_cardio %}
+                        <option value="{{ custom_cardio_type.cardio_type }}">{{ custom_cardio_type.cardio_type }}</option>
+                        {% endfor %}
+                    </select>
+                {% endif %}
             </td>
-            <td><input type="number" name="hours" id="duration" min="0" max="24" placeholder="Hours">
-                <input type="number" name="minutes" id="duration"  min="0" max="59" placeholder="Minutes">
-                <input type="number" name="seconds" id="duration"  min="0" max="59" placeholder="Seconds">
+            <td><input type="number" name="hours" id="hours" min="0" max="24" placeholder="Hours">
+                <input type="number" name="minutes" id="minutes" min="0" max="59" placeholder="Minutes">
+                <input type="number" name="seconds" id="seconds" min="0" max="59" placeholder="Seconds">
             </td>
             <td>
-                <input type="number" name="distance" id="distance" step=".01" 
-                value="{% if current_logs %}{{ current_logs[-1].distance }}{% endif %}">
+                <input type="number" name="distance" id="distance" step=".01" min="0"
+                value="{% if current_logs and current_logs[-1].distance %}{{ current_logs[-1].distance }}{% endif %}">
                 <select name="distance_unit" id="distance_unit">
-                    <option value="" disabled selected>-- Select Unit --</option>
+                    <option value="">-- Select Unit --</option>
                     <option value="mi"
                         {% if current_logs and current_logs[-1].distance_unit == "mi" %}
                             selected
@@ -110,6 +119,18 @@
 
         intensitySlider.addEventListener("input", () => {
             intensityValue.textContent = intensitySlider.value;
+        });
+    }
+
+    const cardioTypeSelect = document.getElementById("cardio_type_select");
+    const customCardioSelect = document.getElementById("custom_cardio_select");
+
+    if (cardioTypeSelect && customCardioSelect) {
+        cardioTypeSelect.addEventListener("change", () => {
+            if (cardioTypeSelect.value !== "") customCardioSelect.value = "";
+        });
+        customCardioSelect.addEventListener("change", () => {
+            if (customCardioSelect.value !== "") cardioTypeSelect.value = "";
         });
     }
 </script>

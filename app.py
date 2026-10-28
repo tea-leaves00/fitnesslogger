@@ -477,9 +477,12 @@ def cardio_index():
 @app.route('/log_cardio', methods=['GET', 'POST'])
 @login_required
 def log_cardio():
-    cardio_types = get_cardio_types()
-    cardio_type_ids = {row['cardio_type']: row['id'] for row in cardio_types}
     user_id = current_user.id
+
+    cardio_types = get_cardio_types()
+    custom_cardio = get_custom_cardio(user_id)
+    cardio_type_ids = {row['cardio_type']: row['id'] for row in cardio_types}
+    custom_cardio_ids = {row['cardio_type']: row['id'] for row in custom_cardio}
 
     if request.method == 'POST':
         if request.form.get('action') == 'select_date':
@@ -492,20 +495,31 @@ def log_cardio():
         #TODO consider which of these should be stored as NULL vs 0
         elif request.form.get('action') == 'add_log':
             cardio_type = request.form.get('cardio_type')
-            if request.form.get('hours'): hours = int(request.form.get('hours'))
-            else: hours = 0
-            if request.form.get('minutes'): minutes = int(request.form.get('minutes'))
-            else: minutes = 0
-            if request.form.get('seconds'): seconds = int(request.form.get('seconds'))
-            else: seconds = 0
+            custom_cardio_type = request.form.get('custom_cardio')
+            hours = request.form.get('hours', 0, type=int)
+            minutes = request.form.get('minutes', 0, type=int)
+            seconds = request.form.get('seconds', 0, type=int)
             db_duration = get_db_duration(hours, minutes, seconds)
             distance = request.form.get('distance')
             distance_unit = request.form.get('distance_unit')
             intensity = request.form.get('intensity')
 
-            if not distance: distance = None
-            if not distance_unit: distance_unit = None
-            if not intensity: intensity = None
+            distance = distance if distance else None
+            distance_unit = distance_unit if distance_unit else None
+            intensity = intensity if intensity else None
+
+            if cardio_type and custom_cardio_type:
+                flash("Please select either a standard cardio type OR a custom cardio type, not both")
+                return redirect(url_for('log_cardio'))
+            if not cardio_type and not custom_cardio_type:
+                flash("Please select a cardio type")
+                return redirect(url_for('log_cardio'))
+
+            cardio_type_id = cardio_type_ids.get(cardio_type) if cardio_type else None
+            custom_cardio_id = custom_cardio_ids.get(custom_cardio_type) if custom_cardio_type else None
+            if not cardio_type_id and not custom_cardio_id:
+                flash(f"'{cardio_type if cardio_type else custom_cardio_type}' isn't in your cardio list")
+                return redirect(url_for('log_cardio'))
 
             if distance and not distance_unit:
                 flash("Please select either miles or kilometers")
@@ -522,9 +536,9 @@ def log_cardio():
                 session['current_logs'] = []
 
             session['current_logs'].append({
-                'cardio_type': cardio_type,
-                'cardio_type_id': cardio_type_ids.get(cardio_type),
-                'custom_cardio_id': None,
+                'cardio_type': cardio_type if cardio_type else custom_cardio_type,
+                'cardio_type_id': cardio_type_id,
+                'custom_cardio_id': custom_cardio_id,
                 'hours': hours,
                 'minutes': minutes,
                 'seconds': seconds,
@@ -536,7 +550,7 @@ def log_cardio():
             session.modified = True
         
         elif request.form.get('action') == 'finish_session':
-            if 'current_logs' not in session:
+            if not session.get('current_logs'):
                 flash("Please add at least one cardio log before finishing up the session")
                 return redirect(url_for('log_cardio'))
             else:
@@ -553,7 +567,8 @@ def log_cardio():
             clear_cardio_session(session)
             return redirect(url_for('log_cardio'))
 
-    return render_template('log_cardio.html', cardio_types=cardio_types, 
+    return render_template('log_cardio.html', cardio_types=cardio_types,
+                           custom_cardio=custom_cardio,
                            current_logs = session.get('current_logs', []),
                            date_selection=session.setdefault('date_selection', True))
 
