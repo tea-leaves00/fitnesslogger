@@ -98,7 +98,7 @@ def create_workout(session_date, session_notes, user_id, grouped_sets):
         c.execute("""
                 INSERT INTO workout_sessions (session_date, session_notes, user_id)
                 VALUES (?, ?, ?)
-                """, (session_date, session_notes if session_notes else None, user_id))
+                """, (session_date, session_notes or None, user_id))
         session_id = c.lastrowid
 
         for exercise in grouped_sets:
@@ -121,7 +121,7 @@ def create_cardio_session(session_date, session_notes, user_id, grouped_logs):
         c.execute("""
             INSERT INTO cardio_sessions (session_date, session_notes, user_id)
             VALUES (?, ?, ?)
-        """, (session_date, session_notes if session_notes else None, user_id))
+        """, (session_date, session_notes or None, user_id))
         session_id = c.lastrowid
 
         c.executemany("""

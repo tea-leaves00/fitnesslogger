@@ -223,7 +223,7 @@ def log_workout():
         elif request.form.get('action') == 'add_set':
             exercise = request.form.get('exercise')
             custom_exercise = request.form.get('custom_exercise')
-            exercise_notes = request.form.get('exercise_notes')
+            exercise_notes = request.form.get('exercise_notes') or None
             sets = request.form.get('sets', type=int)
             reps = request.form.get('reps', type=int)
             bodyweight = request.form.get('bodyweight')
@@ -235,7 +235,6 @@ def log_workout():
             if not exercise and not custom_exercise:
                 flash("Please select an exercise")
                 return redirect(url_for('log_workout'))
-            if not exercise_notes: exercise_notes = None
             if not reps:
                 flash('Reps are required')
                 return redirect(url_for('log_workout'))
@@ -359,14 +358,14 @@ def edit_workout(session_date):
         session_updates = []
         for session_id in request.form.getlist('session_id'):
             new_session_date = request.form.get(f'session_date_{session_id}')
-            session_notes = request.form.get(f'session_notes_{session_id}')
-            session_updates.append((new_session_date, session_notes if session_notes else None, session_id))
+            session_notes = request.form.get(f'session_notes_{session_id}') or None
+            session_updates.append((new_session_date, session_notes, session_id))
 
         log_updates = []
         for workout_log_id in request.form.getlist('workout_log_id'):
             exercise = request.form.get(f'exercise_{workout_log_id}')
             custom_exercise = request.form.get(f'custom_exercise_{workout_log_id}')
-            exercise_notes = request.form.get(f'exercise_notes_{workout_log_id}')
+            exercise_notes = request.form.get(f'exercise_notes_{workout_log_id}') or None
 
             if exercise and custom_exercise:
                 flash("Please select either a standard exercise OR a custom exercise, not both")
@@ -375,14 +374,13 @@ def edit_workout(session_date):
                 flash("Please select an exercise")
                 return redirect(url_for('edit_workout', session_date=session_date))
 
-            exercise_id = exercise_ids.get(exercise) if exercise else None
-            custom_exercise_id = custom_exercise_ids.get(custom_exercise) if custom_exercise else None
+            exercise_id = exercise_ids.get(exercise)
+            custom_exercise_id = custom_exercise_ids.get(custom_exercise)
             if not exercise_id and not custom_exercise_id:
-                flash(f"'{exercise if exercise else custom_exercise}' isn't in your exercise list")
+                flash(f"'{exercise or custom_exercise}' isn't in your exercise list")
                 return redirect(url_for('edit_workout', session_date=session_date))
 
-            log_updates.append((exercise_id, custom_exercise_id,
-                                exercise_notes if exercise_notes else None, workout_log_id))
+            log_updates.append((exercise_id, custom_exercise_id, exercise_notes, workout_log_id))
 
         set_updates = []
         for set_id in request.form.getlist('set_id'):
@@ -493,15 +491,10 @@ def log_cardio():
             hours = request.form.get('hours', 0, type=int)
             minutes = request.form.get('minutes', 0, type=int)
             seconds = request.form.get('seconds', 0, type=int)
-            db_duration = get_db_duration(hours, minutes, seconds)
-            distance = request.form.get('distance', type=float)
-            distance_unit = request.form.get('distance_unit')
-            intensity = request.form.get('intensity', type=int)
-
-            db_duration = db_duration if db_duration else None
-            distance = distance if distance else None
-            distance_unit = distance_unit if distance_unit else None
-            intensity = intensity if intensity else None
+            db_duration = get_db_duration(hours, minutes, seconds) or None
+            distance = request.form.get('distance', type=float) or None
+            distance_unit = request.form.get('distance_unit') or None
+            intensity = request.form.get('intensity', type=int) or None
 
             if cardio_type and custom_cardio_type:
                 flash("Please select either a standard cardio type OR a custom cardio type, not both")
@@ -510,10 +503,10 @@ def log_cardio():
                 flash("Please select a cardio type")
                 return redirect(url_for('log_cardio'))
 
-            cardio_type_id = cardio_type_ids.get(cardio_type) if cardio_type else None
-            custom_cardio_id = custom_cardio_ids.get(custom_cardio_type) if custom_cardio_type else None
+            cardio_type_id = cardio_type_ids.get(cardio_type)
+            custom_cardio_id = custom_cardio_ids.get(custom_cardio_type)
             if not cardio_type_id and not custom_cardio_id:
-                flash(f"'{cardio_type if cardio_type else custom_cardio_type}' isn't in your cardio list")
+                flash(f"'{cardio_type or custom_cardio_type}' isn't in your cardio list")
                 return redirect(url_for('log_cardio'))
 
             if distance and not distance_unit:
@@ -531,7 +524,7 @@ def log_cardio():
                 session['current_logs'] = []
 
             session['current_logs'].append({
-                'cardio_type': cardio_type if cardio_type else custom_cardio_type,
+                'cardio_type': cardio_type or custom_cardio_type,
                 'cardio_type_id': cardio_type_id,
                 'custom_cardio_id': custom_cardio_id,
                 'hours': hours,
@@ -597,8 +590,8 @@ def edit_cardio_session(session_date):
         session_updates = []
         for session_id in request.form.getlist('session_id'):
             new_session_date = request.form.get(f'session_date_{session_id}')
-            session_notes = request.form.get(f'session_notes_{session_id}')
-            session_updates.append((new_session_date, session_notes if session_notes else None, session_id))
+            session_notes = request.form.get(f'session_notes_{session_id}') or None
+            session_updates.append((new_session_date, session_notes, session_id))
 
         log_updates = []
         for log_id in request.form.getlist('log_id'):
@@ -607,9 +600,9 @@ def edit_cardio_session(session_date):
             hours = request.form.get(f'hours_{log_id}', 0, type=int)
             minutes = request.form.get(f'minutes_{log_id}', 0, type=int)
             seconds = request.form.get(f'seconds_{log_id}', 0, type=int)
-            distance = request.form.get(f'distance_{log_id}', type=float)
-            distance_unit = request.form.get(f'distance_unit_{log_id}')
-            intensity = request.form.get(f'intensity_{log_id}', type=int)
+            distance = request.form.get(f'distance_{log_id}', type=float) or None
+            distance_unit = request.form.get(f'distance_unit_{log_id}') or None
+            intensity = request.form.get(f'intensity_{log_id}', type=int) or None
 
             if cardio_type and custom_cardio_type:
                 flash("Please select either a standard cardio type OR a custom cardio type, not both")
@@ -618,13 +611,13 @@ def edit_cardio_session(session_date):
                 flash("Please select a cardio type")
                 return redirect(url_for('edit_cardio_session', session_date=session_date))
 
-            cardio_type_id = cardio_type_ids.get(cardio_type) if cardio_type else None
-            custom_cardio_id = custom_cardio_ids.get(custom_cardio_type) if custom_cardio_type else None
+            cardio_type_id = cardio_type_ids.get(cardio_type)
+            custom_cardio_id = custom_cardio_ids.get(custom_cardio_type)
             if not cardio_type_id and not custom_cardio_id:
-                flash(f"'{cardio_type if cardio_type else custom_cardio_type}' isn't in your cardio list")
+                flash(f"'{cardio_type or custom_cardio_type}' isn't in your cardio list")
                 return redirect(url_for('edit_cardio_session', session_date=session_date))
 
-            duration = get_db_duration(hours, minutes, seconds)
+            duration = get_db_duration(hours, minutes, seconds) or None
 
             if distance and not distance_unit:
                 flash("Please select either miles or kilometers")
@@ -636,12 +629,8 @@ def edit_cardio_session(session_date):
                 flash("Please enter either distance or duration")
                 return redirect(url_for('edit_cardio_session', session_date=session_date))
 
-            log_updates.append((cardio_type_id, custom_cardio_id,
-                                duration if duration else None,
-                                distance if distance else None,
-                                distance_unit if distance_unit else None,
-                                intensity if intensity else None,
-                                log_id))
+            log_updates.append((cardio_type_id, custom_cardio_id, duration,
+                                distance, distance_unit, intensity, log_id))
 
         try:
             update_cardio_session(current_user.id, session_updates, log_updates)
