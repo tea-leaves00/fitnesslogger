@@ -412,46 +412,39 @@ def edit_workout(session_date):
 @app.route('/custom_exercises', methods=['GET', 'POST'])
 @login_required
 def custom_exercises():
-    custom_exercises = []
-    editing_exercise = False
     user_id = current_user.id
 
     if request.method == 'POST':
         if request.form.get('action') == 'add_exercise':
-            custom_exercise = request.form.get('create_custom_exercise')
+            custom_exercise = request.form.get('create_custom_exercise').strip()
             if not custom_exercise:
                 flash("Please enter name of exercise")
                 return redirect(url_for('custom_exercises'))
-            create_custom_exercise(user_id, custom_exercise)
+            if not create_custom_exercise(user_id, custom_exercise):
+                flash(f"You already have an exercise named '{custom_exercise}'")
+                return redirect(url_for('custom_exercises'))
             flash('Custom exercise added successfully!')
             return redirect(url_for('custom_exercises'))
-        elif request.form.get('action') == 'view_exercises':
-            custom_exercises = get_custom_exercises(user_id)
-            if not custom_exercises:
-                flash("No custom exercises have been created")
-        elif request.form.get('action') == 'edit_exercises':
-            editing_exercise = True
-            custom_exercises = get_custom_exercises(user_id)
         elif request.form.get('action').startswith('delete_'):
-            action = request.form.get('action')
-            exercise_id = action.split('_')[1]
-            success = delete_custom_exercise(user_id, exercise_id)
-            if not success:
+            exercise_id = request.form.get('action').split('_')[1]
+            if not delete_custom_exercise(user_id, exercise_id):
                 flash("Can't delete this exercise — it's been used in a workout.")
-            editing_exercise = True
-            custom_exercises = get_custom_exercises(user_id)
+            return redirect(url_for('custom_exercises', edit=1))
         elif request.form.get('action') == 'save_changes':
             old_exercises = request.form.getlist('old_exercise')
             exercise_ids = request.form.getlist('exercise_id')
-            new_exercises = request.form.getlist('new_exercise')
+            new_exercises = [name.strip() for name in request.form.getlist('new_exercise')]
             for exercise_id, old_exercise, new_exercise in zip(exercise_ids, old_exercises, new_exercises):
                 if old_exercise != new_exercise:
-                    if not update_custom_exercise(user_id, new_exercise, exercise_id):
-                        flash(f"Couldn't update {old_exercise}.")
-            flash("Exercises succesfully edited")
+                    if not new_exercise or not update_custom_exercise(user_id, new_exercise, exercise_id):
+                        flash(f"Couldn't rename '{old_exercise}' (blank or duplicate name). Any edits below it weren't saved.")
+                        return redirect(url_for('custom_exercises', edit=1))
+            flash("Exercises successfully edited")
             return redirect(url_for('custom_exercises'))
 
-    return render_template('custom_exercises.html', 
+    custom_exercises = get_custom_exercises(user_id)
+    editing_exercise = request.args.get('edit')
+    return render_template('custom_exercises.html',
                            custom_exercises=custom_exercises, 
                            editing_exercise=editing_exercise)
 
