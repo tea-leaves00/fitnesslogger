@@ -650,44 +650,39 @@ def edit_cardio_session(session_date):
 @app.route('/custom_cardio', methods=['GET', 'POST'])
 @login_required
 def custom_cardio():
-    custom_cardio = []
-    editing_cardio = False
     user_id = current_user.id
 
     if request.method == 'POST':
         if request.form.get('action') == 'add_cardio':
-            custom_cardio = request.form.get('create_custom_cardio')
+            custom_cardio = request.form.get('create_custom_cardio').strip()
             if not custom_cardio:
                 flash("Please enter a name for the cardio type")
                 return redirect(url_for('custom_cardio'))
-            create_custom_cardio(user_id, custom_cardio)
+            if not create_custom_cardio(user_id, custom_cardio):
+                flash(f"You already have a cardio type named '{custom_cardio}'")
+                return redirect(url_for('custom_cardio'))
             flash('Custom cardio added successfully!')
             return redirect(url_for('custom_cardio'))
-        elif request.form.get('action') == 'view_custom_cardio':
-            custom_cardio = get_custom_cardio(user_id)
-            if not custom_cardio:
-                flash("No custom cardio types have been created")
-        elif request.form.get('action') == 'edit_cardio':
-            editing_cardio = True
-            custom_cardio = get_custom_cardio(user_id)
         elif request.form.get('action').startswith('delete_'):
-            action = request.form.get('action')
-            cardio_id = action.split('_')[1]
-            success = delete_custom_cardio(user_id, cardio_id)
-            if not success:
+            cardio_id = request.form.get('action').split('_')[1]
+            if not delete_custom_cardio(user_id, cardio_id):
                 flash("Can't delete this cardio type — it's been used in a session.")
-            editing_cardio = True
-            custom_cardio = get_custom_cardio(user_id)
+            return redirect(url_for('custom_cardio', edit=1))
         elif request.form.get('action') == 'save_changes':
             old_cardio = request.form.getlist('old_cardio')
             cardio_id = request.form.getlist('cardio_id')
-            new_cardio = request.form.getlist('new_cardio')
+            new_cardio = [name.strip() for name in request.form.getlist('new_cardio')]
 
             for cardio_id, old_card, new_card in zip(cardio_id, old_cardio, new_cardio):
                 if old_card != new_card:
-                    if not update_custom_cardio(user_id, new_card, cardio_id):
-                        flash(f"Couldn't update {old_card}.")
+                    if not new_card or not update_custom_cardio(user_id, new_card, cardio_id):
+                        flash(f"Couldn't rename '{old_card}' (blank or duplicate name). Any edits below it weren't saved.")
+                        return redirect(url_for('custom_cardio', edit=1))
+            flash("Cardio types successfully edited")
+            return redirect(url_for('custom_cardio'))
 
+    custom_cardio = get_custom_cardio(user_id)
+    editing_cardio = request.args.get('edit')
     return render_template('custom_cardio.html', custom_cardio=custom_cardio, editing_cardio=editing_cardio)
 
 

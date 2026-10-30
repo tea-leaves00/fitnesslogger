@@ -95,7 +95,11 @@ def create_custom_exercise(user_id, exercise):
 
 def create_custom_cardio(user_id, cardio_type):
     with db_connection() as (conn, c):
-        c.execute("INSERT INTO custom_cardio (user_id, cardio_type) VALUES (?, ?)", (user_id, cardio_type))
+        try:
+            c.execute("INSERT INTO custom_cardio (user_id, cardio_type) VALUES (?, ?)", (user_id, cardio_type))
+            return True
+        except sqlite3.IntegrityError:
+            return False
 
 def create_workout(session_date, session_notes, user_id, grouped_sets):
     with db_connection() as (conn, c):
@@ -249,8 +253,11 @@ def update_custom_exercise(user_id, new_exercise, exercise_id):
 
 def update_custom_cardio(user_id, new_cardio, cardio_id):
     with db_connection() as (conn, c):
-        c.execute("UPDATE custom_cardio SET cardio_type = ? WHERE user_id = ? AND id = ?", (new_cardio, user_id, cardio_id))
-        return c.rowcount == 1
+        try:
+            c.execute("UPDATE custom_cardio SET cardio_type = ? WHERE user_id = ? AND id = ?", (new_cardio, user_id, cardio_id))
+            return c.rowcount == 1
+        except sqlite3.IntegrityError:
+            return False
 
 def update_password(user_id, password_hash):
     with db_connection() as (conn, c):
