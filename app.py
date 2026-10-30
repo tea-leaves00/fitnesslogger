@@ -214,6 +214,7 @@ def log_workout():
 
     if request.method == 'POST':
         if request.form.get('action') == 'select_date':
+            #NOTE any point of these local variables?
             session_date = request.form.get('session_date')
             session_notes = request.form.get('session_notes')
             session['session_date'] = session_date
@@ -229,6 +230,7 @@ def log_workout():
             bodyweight = request.form.get('bodyweight')
             weight = request.form.get('weight', type=float)
 
+            #TODO move this validation to a function/separate module
             if exercise and custom_exercise:
                 flash("Please select either a standard exercise OR a custom exercise, not both")
                 return redirect(url_for('log_workout'))
@@ -323,11 +325,10 @@ def log_workout():
                         custom_exercises=custom_exercises,
                         time_based_exercises=[row['exercise'] for row in exercises if row['is_time_based']],
                         time_based_custom_exercises=[row['exercise'] for row in custom_exercises if row['is_time_based']],
-                        current_set=session.get('current_sets', []), 
+                        current_sets=session.get('current_sets', []), 
                         date_selection=session.setdefault('date_selection', True)
                         )
                         
-
 # == VIEW WORKOUT ==
 @app.route('/view_workout', methods= ['GET', 'POST'])
 @login_required
