@@ -37,7 +37,10 @@ def add_cache_headers(response):
         response.headers['X-Content-Type-Options'] = 'nosniff'
     return response
 
-# == AUTH ==
+# ====
+# AUTH
+# ====
+
 @login_manager.user_loader
 def load_user(user_id):
     user = get_user(id=int(user_id))
