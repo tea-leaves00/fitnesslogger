@@ -1,7 +1,11 @@
 import secrets
+import hashlib
 
 def generate_token():
     return secrets.token_urlsafe(32)
+
+def hash_token(token):
+    return hashlib.sha256(token.encode()).hexdigest()
 
 def get_db_duration(hours, minutes, seconds):
     return (hours * 3600) + (minutes * 60) + seconds    

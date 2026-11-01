@@ -4,6 +4,7 @@
 import sqlite3
 from flask import current_app
 from contextlib import contextmanager
+from utils.session_helpers import hash_token
 import os
 
 
@@ -36,14 +37,14 @@ def save_verification_token(email, token):
             UPDATE users
             SET verification_token = ?, verification_token_created_at = CURRENT_TIMESTAMP
             WHERE email = ?
-        """, (token, email))
+        """, (hash_token(token), email))
 
 def verify_user_token(token):
     with db_connection() as (conn, c):
         result = c.execute("""
             SELECT id, julianday('now') - julianday(verification_token_created_at) < 1 AS is_valid
             FROM users WHERE verification_token = ?
-        """, (token,)).fetchone()
+        """, (hash_token(token),)).fetchone()
         if not result:
             return None, "This verification link is invalid or was already used. Try logging in."
         if not result['is_valid']:
@@ -59,14 +60,14 @@ def save_reset_token(email, token):
             UPDATE users
             SET reset_token = ?, reset_token_created_at = CURRENT_TIMESTAMP
             WHERE email = ?
-        """, (token, email))
+        """, (hash_token(token), email))
 
 def verify_reset_token(token):
     with db_connection() as (conn, c):
         result = c.execute("""
-            SELECT id, julianday('now') - julianday(reset_token_created_at) < 1 AS is_valid
+            SELECT id, julianday('now') - julianday(reset_token_created_at) < 1.0 / 24 AS is_valid
             FROM users WHERE reset_token = ?
-        """, (token,)).fetchone()
+        """, (hash_token(token),)).fetchone()
         if not result:
             return None, "This reset link is invalid. Please request a new one."
         if not result['is_valid']:

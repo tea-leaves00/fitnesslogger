@@ -30,7 +30,7 @@ def send_password_reset_email(email, token):
             <h2>Password Reset Request</h2>
             <p>Click the link below to reset your password:</p>
             <p><a href="{reset_link}">{reset_link}</a></p>
-            <p>This link expires in 24 hours.</p>
+            <p>This link expires in 1 hour.</p>
             <p>If you didn't request this, you can ignore this email.</p>
         """,
     }
