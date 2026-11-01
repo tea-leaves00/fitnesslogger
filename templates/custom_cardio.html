@@ -4,7 +4,7 @@
 {% block cardio_content %}
 <p>Not satisfied with the current list of cardio? 
     Here, you can add custom cardio that will show up in the cardio types list only for your profile. 
-    You can add, edit, delete or view your custom cardio from this page at anytime.</p>
+    You can view, edit, or delete your custom cardio from this page at anytime.</p>
 
 <form action="{{ url_for('custom_cardio') }}" method="POST">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -41,7 +41,7 @@
             <li>{{ cardio.cardio_type }}</li>
         {% endfor %}
         </ul>
-        <a href="{{ url_for('custom_cardio', edit=1) }}">Edit</a>
+        <a href="{{ url_for('custom_cardio', edit=1) }}">Edit cardio types</a>
     {% endif %}
 {% else %}
     <p>No custom cardio yet</p>

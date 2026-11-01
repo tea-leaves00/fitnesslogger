@@ -654,12 +654,12 @@ def custom_cardio():
 
     if request.method == 'POST':
         if request.form.get('action') == 'add_cardio':
-            custom_cardio = request.form.get('create_custom_cardio').strip()
-            if not custom_cardio:
+            custom_cardio_type = request.form.get('create_custom_cardio').strip()
+            if not custom_cardio_type:
                 flash("Please enter a name for the cardio type")
                 return redirect(url_for('custom_cardio'))
-            if not create_custom_cardio(user_id, custom_cardio):
-                flash(f"You already have a cardio type named '{custom_cardio}'")
+            if not create_custom_cardio(user_id, custom_cardio_type):
+                flash(f"You already have a cardio type named '{custom_cardio_type}'")
                 return redirect(url_for('custom_cardio'))
             flash('Custom cardio added successfully!')
             return redirect(url_for('custom_cardio'))
@@ -669,14 +669,13 @@ def custom_cardio():
                 flash("Can't delete this cardio type — it's been used in a session.")
             return redirect(url_for('custom_cardio', edit=1))
         elif request.form.get('action') == 'save_changes':
-            old_cardio = request.form.getlist('old_cardio')
-            cardio_id = request.form.getlist('cardio_id')
-            new_cardio = [name.strip() for name in request.form.getlist('new_cardio')]
-
-            for cardio_id, old_card, new_card in zip(cardio_id, old_cardio, new_cardio):
-                if old_card != new_card:
-                    if not new_card or not update_custom_cardio(user_id, new_card, cardio_id):
-                        flash(f"Couldn't rename '{old_card}' (blank or duplicate name). Any edits below it weren't saved.")
+            old_cardio_types = request.form.getlist('old_cardio')
+            cardio_ids = request.form.getlist('cardio_id')
+            new_cardio_types = [name.strip() for name in request.form.getlist('new_cardio')]
+            for cardio_id, old_cardio_type, new_cardio_type in zip(cardio_ids, old_cardio_types, new_cardio_types):
+                if old_cardio_type != new_cardio_type:
+                    if not new_cardio_type or not update_custom_cardio(user_id, new_cardio_type, cardio_id):
+                        flash(f"Couldn't rename '{old_cardio_type}' (blank or duplicate name). Any edits below it weren't saved.")
                         return redirect(url_for('custom_cardio', edit=1))
             flash("Cardio types successfully edited")
             return redirect(url_for('custom_cardio'))
