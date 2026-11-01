@@ -1,13 +1,14 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, current_app, g
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFProtect
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import generate_password_hash
 from utils.user_class import User
 from utils.db import *
 from utils.session_helpers import *
 from utils.email_service import *
+from utils.validators import validate_registration, validate_password_reset, validate_login
 import os
 
 # == APP CONFIG ==
@@ -46,25 +47,27 @@ def load_user(user_id):
     user = get_user(id=int(user_id))
 
     if not user: return None
-    
-    return User(
-        id=user['id'], 
-        first_name=user['first_name'], last_name=user['last_name'], 
-        username=user['username'], email=user['email'])
+
+    return User.from_db_row(user)
 
 @app.route('/register', methods=['GET', 'POST'])
 @limiter.limit("10 per minute")
 def register():
     if request.method == 'POST':
-        first_name = request.form.get('first_name')
-        last_name = request.form.get('last_name')
-        username = request.form.get('username')
-        email = request.form.get('email')
+        first_name = request.form.get('first_name', '').strip()
+        last_name = request.form.get('last_name', '').strip()
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
         password = request.form.get('password')
-        password_hash = generate_password_hash(password)
 
+        error = validate_registration(first_name, last_name, username, email, password)
+        if error:
+            flash(error)
+            return redirect(url_for('register'))
+
+        password_hash = generate_password_hash(password)
         if create_user(first_name, last_name, username, password_hash, email):
-            token = generate_verification_token()
+            token = generate_token()
             save_verification_token(email, token)
             send_verification_email(email, token)
 
@@ -75,53 +78,37 @@ def register():
             return redirect(url_for('register'))
     
     return render_template('register.html')
+
+@app.route('/verify/<token>')
+def verify_email(token):
+    _, message = verify_user_token(token)
+    flash(message)
+    return redirect(url_for('login'))
     
 @app.route('/login', methods=['GET', 'POST'])
 @limiter.limit("10 per minute")
 def login():
     if request.method == 'POST':
-        username = request.form.get('username')
+        username = request.form.get('username', '').strip()
         password = request.form.get('password')
-        
+
         user = get_user(username=username)
-        
-        if not user:
-            flash("Incorrect username or password")
-            return redirect(url_for('login'))
-        
-        password_hash = user['password_hash']
-        if check_password_hash(password_hash, password):
-            if not user['verified']:
-                flash("Please verify your email before logging in.")
-                return redirect(url_for('login'))
-            
-            user = User(
-                id=user['id'], 
-                first_name=user['first_name'], last_name=user['last_name'], 
-                username=user['username'], email=user['email'])
-            login_user(user)
-            return redirect(url_for('index'))
-        else:
-            flash("Incorrect username or password. Please try again")
+
+        error = validate_login(user, password)
+        if error:
+            flash(error)
             return redirect(url_for('login'))
 
+        login_user(User.from_db_row(user))
+        return redirect(url_for('index'))
+        
     return render_template('login.html')
-
-@app.route('/verify/<token>')
-def verify_email(token):
-    user_id, message = verify_user_token(token)
-    flash(message)
-
-    if user_id:
-        return redirect(url_for('login'))
-    else:
-        return redirect(url_for('register'))
 
 @app.route('/forgot_username', methods=['GET', 'POST'])
 @limiter.limit("10 per minute")
 def forgot_username():
     if request.method == 'POST':
-        email = request.form.get('email')
+        email = request.form.get('email', '').strip()
         user = get_user(email=email)
 
         if user:
@@ -136,11 +123,11 @@ def forgot_username():
 @limiter.limit("10 per minute")
 def forgot_password():
     if request.method == 'POST':
-        email = request.form.get('email')
+        email = request.form.get('email', '').strip()
         user = get_user(email=email)
         
         if user:
-            token = generate_verification_token()
+            token = generate_token()
             save_reset_token(email, token)
             send_password_reset_email(email, token)
         
@@ -155,14 +142,15 @@ def reset_password(token):
     
     if not user_id:
         flash(message)
-        return redirect(url_for('login'))
-    
+        return redirect(url_for('forgot_password'))
+
     if request.method == 'POST':
         password = request.form.get('password')
         confirmation = request.form.get('confirmation')
-        
-        if password != confirmation:
-            flash("Passwords don't match")
+
+        error = validate_password_reset(password, confirmation)
+        if error:
+            flash(error)
             return redirect(url_for('reset_password', token=token))
         
         password_hash = generate_password_hash(password)

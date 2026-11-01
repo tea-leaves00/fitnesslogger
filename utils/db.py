@@ -45,9 +45,9 @@ def verify_user_token(token):
             FROM users WHERE verification_token = ?
         """, (token,)).fetchone()
         if not result:
-            return None, "Invalid token"
+            return None, "This verification link is invalid or was already used. Try logging in."
         if not result['is_valid']:
-            return None, "Token expired"
+            return None, "This verification link has expired."
 
         c.execute("""UPDATE users SET verified = 1, verification_token = NULL,
                      verification_token_created_at = NULL WHERE id = ?""", (result['id'],))
@@ -68,9 +68,9 @@ def verify_reset_token(token):
             FROM users WHERE reset_token = ?
         """, (token,)).fetchone()
         if not result:
-            return None, "Invalid token"
+            return None, "This reset link is invalid. Please request a new one."
         if not result['is_valid']:
-            return None, "Token expired"
+            return None, "This reset link has expired. Please request a new one."
 
         return result['id'], "Valid"
 
