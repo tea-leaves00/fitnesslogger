@@ -39,9 +39,14 @@ def group_sets(sets):
     return grouped_sets
 
 def group_logs(logs):
-    return [(log['cardio_type_id'], log['custom_cardio_id'], log['db_duration'],
-              log['distance'], log['distance_unit'], log['intensity'])
-            for log in logs]
+    grouped_logs = []
+    for log in logs:
+        if log['is_custom']: cardio_type_id, custom_cardio_id = None, log['cardio_type_id']
+        else: cardio_type_id, custom_cardio_id = log['cardio_type_id'], None
+
+        grouped_logs.append((cardio_type_id, custom_cardio_id, log['db_duration'],
+                             log['distance'], log['distance_unit'], log['intensity']))
+    return grouped_logs
 
 def clear_workout_session(session):
     keys = [

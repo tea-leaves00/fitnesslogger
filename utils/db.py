@@ -130,19 +130,22 @@ def create_workout(session_date, session_notes, user_id, grouped_sets):
         return None
 
 def create_cardio_session(session_date, session_notes, user_id, grouped_logs):
-    with db_connection() as (conn, c):
-        c.execute("""
-            INSERT INTO cardio_sessions (session_date, session_notes, user_id)
-            VALUES (?, ?, ?)
-        """, (session_date, session_notes or None, user_id))
-        session_id = c.lastrowid
+    try:
+        with db_connection() as (conn, c):
+            c.execute("""
+                INSERT INTO cardio_sessions (session_date, session_notes, user_id)
+                VALUES (?, ?, ?)
+            """, (session_date, session_notes or None, user_id))
+            session_id = c.lastrowid
 
-        c.executemany("""
-            INSERT INTO cardio_logs (cardio_session_id, cardio_type_id, custom_cardio_id, duration, distance, distance_unit, intensity)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, [(session_id, *log) for log in grouped_logs])
+            c.executemany("""
+                INSERT INTO cardio_logs (cardio_session_id, cardio_type_id, custom_cardio_id, duration, distance, distance_unit, intensity)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, [(session_id, *log) for log in grouped_logs])
 
-        return session_id
+            return session_id
+    except sqlite3.IntegrityError:
+        return None
 
 
 # == READ ==

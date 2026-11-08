@@ -455,10 +455,8 @@ def log_cardio():
 
     if request.method == 'POST':
         if request.form.get('action') == 'select_date':
-            session_date = request.form.get('session_date')
-            session_notes = request.form.get('session_notes')
-            session['session_date'] = session_date
-            session['session_notes'] = session_notes
+            session['session_date'] = request.form.get('session_date')
+            session['session_notes'] = request.form.get('session_notes')
             session['date_selection'] = False
 
         elif request.form.get('action') == 'add_log':
@@ -479,10 +477,17 @@ def log_cardio():
                 flash("Please select a cardio type")
                 return redirect(url_for('log_cardio'))
 
-            cardio_type_id = cardio_type_ids.get(cardio_type)
-            custom_cardio_id = custom_cardio_ids.get(custom_cardio_type)
-            if not cardio_type_id and not custom_cardio_id:
-                flash(f"'{cardio_type or custom_cardio_type}' isn't in your cardio list")
+            if cardio_type:
+                selected_cardio_type = cardio_type
+                cardio_type_id = cardio_type_ids.get(selected_cardio_type)
+                is_custom = False
+            else:
+                selected_cardio_type = custom_cardio_type
+                cardio_type_id = custom_cardio_ids.get(selected_cardio_type)
+                is_custom = True
+
+            if not cardio_type_id:
+                flash(f"'{selected_cardio_type}' isn't in your cardio list")
                 return redirect(url_for('log_cardio'))
 
             if distance and not distance_unit:
@@ -496,13 +501,17 @@ def log_cardio():
                 flash("Please enter either distance or duration")
                 return redirect(url_for('log_cardio'))
 
+            if intensity and not 1 <= intensity <= 10:
+                flash("Intensity must be between 1 and 10")
+                return redirect(url_for('log_cardio'))
+
             if 'current_logs' not in session:
                 session['current_logs'] = []
 
             session['current_logs'].append({
-                'cardio_type': cardio_type or custom_cardio_type,
+                'cardio_type': selected_cardio_type,
                 'cardio_type_id': cardio_type_id,
-                'custom_cardio_id': custom_cardio_id,
+                'is_custom': is_custom,
                 'hours': hours,
                 'minutes': minutes,
                 'seconds': seconds,
@@ -517,12 +526,15 @@ def log_cardio():
             if not session.get('current_logs'):
                 flash("Please add at least one cardio log before finishing up the session")
                 return redirect(url_for('log_cardio'))
-            else:
-                grouped_logs = group_logs(session['current_logs'])
-                create_cardio_session(session['session_date'], session['session_notes'], user_id, grouped_logs)
-                clear_cardio_session(session)
-                flash("Cardio Session Logged Successfully!")
+
+            grouped_logs = group_logs(session['current_logs'])
+            if not create_cardio_session(session['session_date'], session['session_notes'], user_id, grouped_logs):
+                flash("Your cardio session couldn't be saved. Check that your cardio types and date are still valid")
                 return redirect(url_for('log_cardio'))
+
+            clear_cardio_session(session)
+            flash("Cardio Session Logged Successfully!")
+            return redirect(url_for('log_cardio'))
 
         elif request.form.get('action') == 'reset':
             clear_logs(session)
@@ -603,6 +615,9 @@ def edit_cardio_session(session_date):
                 return redirect(url_for('edit_cardio_session', session_date=session_date))
             if not distance and not duration:
                 flash("Please enter either distance or duration")
+                return redirect(url_for('edit_cardio_session', session_date=session_date))
+            if intensity and not 1 <= intensity <= 10:
+                flash("Intensity must be between 1 and 10")
                 return redirect(url_for('edit_cardio_session', session_date=session_date))
 
             log_updates.append((cardio_type_id, custom_cardio_id, duration,
