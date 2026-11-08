@@ -205,13 +205,9 @@ def log_workout():
 
     if request.method == 'POST':
         if request.form.get('action') == 'select_date':
-            #NOTE any point of these local variables?
-            session_date = request.form.get('session_date')
-            session_notes = request.form.get('session_notes')
-            session['session_date'] = session_date
-            session['session_notes'] = session_notes
+            session['session_date'] = request.form.get('session_date')
+            session['session_notes'] = request.form.get('session_notes')
             session['date_selection'] = False
-
         elif request.form.get('action') == 'add_set':
             exercise = request.form.get('exercise')
             custom_exercise = request.form.get('custom_exercise')
@@ -221,7 +217,6 @@ def log_workout():
             bodyweight = request.form.get('bodyweight')
             weight = request.form.get('weight', type=float)
 
-            #TODO move this validation to a function/separate module
             if exercise and custom_exercise:
                 flash("Please select either a standard exercise OR a custom exercise, not both")
                 return redirect(url_for('log_workout'))
@@ -240,7 +235,11 @@ def log_workout():
                 selected_exercise = custom_exercise
                 exercise_id = custom_exercise_ids.get(selected_exercise)
                 is_custom = True
-        
+
+            if not exercise_id:
+                flash(f"'{selected_exercise}' isn't in your exercise list")
+                return redirect(url_for('log_workout'))
+
             if bodyweight: weight = None
 
 
@@ -253,34 +252,24 @@ def log_workout():
                     'is_custom': is_custom,
                     'exercise_notes': exercise_notes,
                     'same_sets': True,
+                    'set_number': get_set_number(session['current_sets'], exercise_id, is_custom),
                     'sets': sets,
                     'reps': reps, 
-                    'weight': weight,
+                    'weight': weight
                 })
-                session['same_sets'] = False
-            else: 
-                if 'current_set_number' not in session:
-                    session['current_set_number'] = 1
-
-                if session.get('current_exercise') != selected_exercise:
-                    session['current_exercise'] = selected_exercise
-                    session['current_set_number'] = 1
-                
+            else:
                 session['current_sets'].append({
                     'exercise': selected_exercise,
                     'exercise_id': exercise_id,
                     'is_custom': is_custom,
                     'exercise_notes': exercise_notes,
                     'same_sets': False,
-                    'set_number': session['current_set_number'],
-                    'reps': reps, 
+                    'set_number': get_set_number(session['current_sets'], exercise_id, is_custom),
+                    'reps': reps,
                     'weight': weight
                 })
-                
-                session['current_set_number'] += 1
 
             session.modified = True
-
         elif request.form.get('action').startswith('delete_'):
             action = request.form.get('action')
             index = int(action.split('_')[1])
@@ -290,33 +279,35 @@ def log_workout():
                 session['current_sets'] = current_sets
                 session.modified = True
             return redirect(url_for('log_workout'))
-
         elif request.form.get('action') == 'reset':
             clear_sets(session)
             return redirect(url_for('log_workout'))
         elif request.form.get('action') == 'back':
             clear_workout_session(session)
             return redirect(url_for('log_workout'))
-        
         elif request.form.get('action') == 'finish_workout':
-            if 'current_sets' not in session:
+            if not session.get('current_sets'):
                 flash("Please enter at least one set")
                 return redirect(url_for('log_workout'))
 
-
             grouped_sets = group_sets(session['current_sets'])
-            create_workout(session['session_date'], session['session_notes'], user_id, grouped_sets)
+            if not create_workout(session['session_date'], session['session_notes'], user_id, grouped_sets):
+                flash("Your workout couldn't be saved. Check that your exercises and date are still valid")
+                return redirect(url_for('log_workout'))
 
             clear_workout_session(session)
             flash("Workout Logged Successfully!")
             return redirect(url_for('log_workout'))
 
-            
-    return render_template('log_workout.html', exercises=exercises, 
+    current_sets = session.get('current_sets', [])
+    set_number = get_set_number(current_sets, current_sets[-1]['exercise_id'], current_sets[-1]['is_custom']) if current_sets else 1
+
+    return render_template('log_workout.html', exercises=exercises,
                         custom_exercises=custom_exercises,
                         time_based_exercises=[row['exercise'] for row in exercises if row['is_time_based']],
                         time_based_custom_exercises=[row['exercise'] for row in custom_exercises if row['is_time_based']],
-                        current_sets=session.get('current_sets', []), 
+                        current_sets=current_sets,
+                        set_number=set_number,
                         date_selection=session.setdefault('date_selection', True)
                         )
                         

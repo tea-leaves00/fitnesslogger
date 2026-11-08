@@ -1,5 +1,6 @@
 #TODO eventually implement logging module
 #TODO do integrity check everynight? before copying maybe?
+#TODO review how exceptions are propogated
 
 import sqlite3
 from flask import current_app
@@ -103,27 +104,30 @@ def create_custom_cardio(user_id, cardio_type):
             return False
 
 def create_workout(session_date, session_notes, user_id, grouped_sets):
-    with db_connection() as (conn, c):
-        c.execute("""
-                INSERT INTO workout_sessions (session_date, session_notes, user_id)
-                VALUES (?, ?, ?)
-                """, (session_date, session_notes or None, user_id))
-        session_id = c.lastrowid
-
-        for exercise in grouped_sets:
+    try:
+        with db_connection() as (conn, c):
             c.execute("""
-                        INSERT INTO workout_logs (session_id, exercise_id, custom_exercise_id, exercise_notes)
+                    INSERT INTO workout_sessions (session_date, session_notes, user_id)
+                    VALUES (?, ?, ?)
+                    """, (session_date, session_notes or None, user_id))
+            session_id = c.lastrowid
+
+            for exercise in grouped_sets:
+                c.execute("""
+                            INSERT INTO workout_logs (session_id, exercise_id, custom_exercise_id, exercise_notes)
+                            VALUES (?, ?, ?, ?)
+                        """, (session_id, exercise['exercise_id'], exercise['custom_exercise_id'], exercise['exercise_notes']))
+                workout_log_id = c.lastrowid
+
+                c.executemany("""
+                        INSERT INTO workout_sets (workout_log_id, set_number, reps, weight)
                         VALUES (?, ?, ?, ?)
-                    """, (session_id, exercise['exercise_id'], exercise['custom_exercise_id'], exercise['exercise_notes']))
-            workout_log_id = c.lastrowid
+                    """, [(workout_log_id, set_number, reps, weight)
+                          for set_number, reps, weight in exercise['sets']])
 
-            c.executemany("""
-                    INSERT INTO workout_sets (workout_log_id, set_number, reps, weight)
-                    VALUES (?, ?, ?, ?)
-                """, [(workout_log_id, set_number, reps, weight)
-                      for set_number, reps, weight in exercise['sets']])
-
-        return session_id
+            return session_id
+    except sqlite3.IntegrityError:
+        return None
 
 def create_cardio_session(session_date, session_notes, user_id, grouped_logs):
     with db_connection() as (conn, c):
