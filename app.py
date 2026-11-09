@@ -374,9 +374,7 @@ def edit_workout(session_date):
                 return redirect(url_for('edit_workout', session_date=session_date))
             set_updates.append((reps, weight, set_id))
 
-        try:
-            update_workout(current_user.id, session_updates, log_updates, set_updates)
-        except sqlite3.IntegrityError:
+        if not update_workout(current_user.id, session_updates, log_updates, set_updates):
             flash("Could not edit workout. Please try again.")
             return redirect(url_for('edit_workout', session_date=session_date))
 
@@ -623,9 +621,7 @@ def edit_cardio_session(session_date):
             log_updates.append((cardio_type_id, custom_cardio_id, duration,
                                 distance, distance_unit, intensity, log_id))
 
-        try:
-            update_cardio_session(current_user.id, session_updates, log_updates)
-        except sqlite3.IntegrityError:
+        if not update_cardio_session(current_user.id, session_updates, log_updates):
             flash("Could not edit cardio session. Please try again.")
             return redirect(url_for('edit_cardio_session', session_date=session_date))
 

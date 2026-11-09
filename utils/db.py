@@ -214,42 +214,52 @@ def get_cardio_session(session_date, user_id):
 
 # == UPDATE ==
 def update_workout(user_id, session_updates, log_updates, set_updates):
-    with db_connection() as (conn, c):
-        c.executemany("""
-            UPDATE workout_sessions SET session_date = ?, session_notes = ?
-            WHERE id = ? AND user_id = ?
-            """, [(session_date, session_notes, session_id, user_id)
-                  for session_date, session_notes, session_id in session_updates])
+    try:
+        with db_connection() as (conn, c):
+            c.executemany("""
+                UPDATE workout_sessions SET session_date = ?, session_notes = ?
+                WHERE id = ? AND user_id = ?
+                """, [(session_date, session_notes, session_id, user_id)
+                      for session_date, session_notes, session_id in session_updates])
 
-        c.executemany("""
-            UPDATE workout_logs SET exercise_id = ?, custom_exercise_id = ?, exercise_notes = ?
-            WHERE id = ? AND session_id IN (SELECT id FROM workout_sessions WHERE user_id = ?)
-            """, [(exercise_id, custom_exercise_id, exercise_notes, workout_log_id, user_id)
-                  for exercise_id, custom_exercise_id, exercise_notes, workout_log_id in log_updates])
+            c.executemany("""
+                UPDATE workout_logs SET exercise_id = ?, custom_exercise_id = ?, exercise_notes = ?
+                WHERE id = ? AND session_id IN (SELECT id FROM workout_sessions WHERE user_id = ?)
+                """, [(exercise_id, custom_exercise_id, exercise_notes, workout_log_id, user_id)
+                      for exercise_id, custom_exercise_id, exercise_notes, workout_log_id in log_updates])
 
-        c.executemany("""
-            UPDATE workout_sets SET reps = ?, weight = ?
-            WHERE id = ? AND workout_log_id IN (
-                SELECT workout_logs.id FROM workout_logs
-                JOIN workout_sessions ON workout_logs.session_id = workout_sessions.id
-                WHERE workout_sessions.user_id = ?)
-            """, [(reps, weight, set_id, user_id)
-                  for reps, weight, set_id in set_updates])
+            c.executemany("""
+                UPDATE workout_sets SET reps = ?, weight = ?
+                WHERE id = ? AND workout_log_id IN (
+                    SELECT workout_logs.id FROM workout_logs
+                    JOIN workout_sessions ON workout_logs.session_id = workout_sessions.id
+                    WHERE workout_sessions.user_id = ?)
+                """, [(reps, weight, set_id, user_id)
+                      for reps, weight, set_id in set_updates])
+
+            return True
+    except sqlite3.IntegrityError:
+        return False
 
 def update_cardio_session(user_id, session_updates, log_updates):
-    with db_connection() as (conn, c):
-        c.executemany("""
-            UPDATE cardio_sessions SET session_date = ?, session_notes = ?
-            WHERE id = ? AND user_id = ?
-            """, [(session_date, session_notes, session_id, user_id)
-                  for session_date, session_notes, session_id in session_updates])
+    try:
+        with db_connection() as (conn, c):
+            c.executemany("""
+                UPDATE cardio_sessions SET session_date = ?, session_notes = ?
+                WHERE id = ? AND user_id = ?
+                """, [(session_date, session_notes, session_id, user_id)
+                      for session_date, session_notes, session_id in session_updates])
 
-        c.executemany("""
-            UPDATE cardio_logs
-            SET cardio_type_id = ?, custom_cardio_id = ?, duration = ?, distance = ?, distance_unit = ?, intensity = ?
-            WHERE id = ? AND cardio_session_id IN (SELECT id FROM cardio_sessions WHERE user_id = ?)
-            """, [(cardio_type_id, custom_cardio_id, duration, distance, distance_unit, intensity, log_id, user_id)
-                  for cardio_type_id, custom_cardio_id, duration, distance, distance_unit, intensity, log_id in log_updates])
+            c.executemany("""
+                UPDATE cardio_logs
+                SET cardio_type_id = ?, custom_cardio_id = ?, duration = ?, distance = ?, distance_unit = ?, intensity = ?
+                WHERE id = ? AND cardio_session_id IN (SELECT id FROM cardio_sessions WHERE user_id = ?)
+                """, [(cardio_type_id, custom_cardio_id, duration, distance, distance_unit, intensity, log_id, user_id)
+                      for cardio_type_id, custom_cardio_id, duration, distance, distance_unit, intensity, log_id in log_updates])
+
+            return True
+    except sqlite3.IntegrityError:
+        return False
 
 def update_custom_exercise(user_id, new_exercise, exercise_id):
     with db_connection() as (conn, c):
