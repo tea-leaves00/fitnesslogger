@@ -1,3 +1,4 @@
+from urllib.parse import urlsplit
 from werkzeug.security import check_password_hash
 
 MIN_PASSWORD_LENGTH = 8
@@ -29,3 +30,7 @@ def validate_login(user, password):
         return "Incorrect username or password"
     return None
 
+def is_safe_next(next_url):
+    parts = urlsplit(next_url)
+    return (not parts.scheme and not parts.netloc and next_url.startswith('/')
+            and not next_url.startswith('//') and '\\' not in next_url)

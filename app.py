@@ -8,7 +8,7 @@ from utils.user_class import User
 from utils.db import *
 from utils.session_helpers import *
 from utils.email_service import *
-from utils.validators import validate_registration, validate_password_reset, validate_login
+from utils.validators import validate_registration, validate_password_reset, validate_login, is_safe_next
 import os
 
 # == APP CONFIG ==
@@ -93,13 +93,14 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password')
+        next_url = request.args.get('next')
 
         user = get_user(username=username)
 
         error = validate_login(user, password)
         if error:
             flash(error)
-            return redirect(url_for('login'))
+            return redirect(url_for('login', next=next_url))
 
         if not user['verified']:
             token = generate_token()
@@ -108,9 +109,11 @@ def login():
                 flash("Please verify your email before logging in. We couldn't send a new link, please try again.")
             else:
                 flash("Please verify your email before logging in. We've sent you a new verification link.")
-            return redirect(url_for('login'))
+            return redirect(url_for('login', next=next_url))
 
         login_user(User.from_db_row(user))
+        if next_url and is_safe_next(next_url):
+            return redirect(next_url)
         return redirect(url_for('index'))
         
     return render_template('login.html')
