@@ -51,7 +51,7 @@ def load_user(user_id):
     return User.from_db_row(user)
 
 @app.route('/register', methods=['GET', 'POST'])
-@limiter.limit("10 per minute")
+@limiter.limit("10 per minute", methods=['POST'])
 def register():
     if request.method == 'POST':
         first_name = request.form.get('first_name', '').strip()
@@ -86,7 +86,7 @@ def verify_email(token):
     return redirect(url_for('login'))
     
 @app.route('/login', methods=['GET', 'POST'])
-@limiter.limit("10 per minute")
+@limiter.limit("10 per minute", methods=['POST'])
 def login():
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
@@ -105,7 +105,7 @@ def login():
     return render_template('login.html')
 
 @app.route('/forgot_username', methods=['GET', 'POST'])
-@limiter.limit("10 per minute")
+@limiter.limit("10 per minute", methods=['POST'])
 def forgot_username():
     if request.method == 'POST':
         email = request.form.get('email', '').strip()
@@ -120,7 +120,7 @@ def forgot_username():
     return render_template('forgot_username.html')
  
 @app.route('/forgot_password', methods=['GET', 'POST'])
-@limiter.limit("10 per minute")
+@limiter.limit("10 per minute", methods=['POST'])
 def forgot_password():
     if request.method == 'POST':
         email = request.form.get('email', '').strip()
