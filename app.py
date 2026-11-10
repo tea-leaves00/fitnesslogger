@@ -69,7 +69,9 @@ def register():
         if create_user(first_name, last_name, username, password_hash, email):
             token = generate_token()
             save_verification_token(email, token)
-            send_verification_email(email, token)
+            if not send_verification_email(email, token):
+                flash("Your account was created, but we couldn't send the verification email. Please try again later.")
+                return redirect(url_for('login'))
 
             flash("Registration successful! Check your email to verify your account.")
             return redirect(url_for('register'))
@@ -111,9 +113,10 @@ def forgot_username():
         email = request.form.get('email', '').strip()
         user = get_user(email=email)
 
-        if user:
-            send_username_email(email, user['username'])
-        
+        if user and not send_username_email(email, user['username']):
+            flash("We couldn't send the email. Please try again.")
+            return redirect(url_for('forgot_username'))
+
         flash("If an account with that email exists, you'll receive an email shortly.")
         return redirect(url_for('forgot_username'))
 
@@ -129,8 +132,10 @@ def forgot_password():
         if user:
             token = generate_token()
             save_reset_token(email, token)
-            send_password_reset_email(email, token)
-        
+            if not send_password_reset_email(email, token):
+                flash("We couldn't send the email. Please try again.")
+                return redirect(url_for('forgot_password'))
+
         flash("If an account with that email exists, you'll receive a reset link.")
         return redirect(url_for('forgot_password'))
     

@@ -16,8 +16,12 @@ def send_verification_email(email, token):
             <p>This link expires in 24 hours.</p>
         """,
     }
-    
-    resend.Emails.send(params)
+
+    try:
+        resend.Emails.send(params)
+        return True
+    except resend.exceptions.ResendError:
+        return False
 
 def send_password_reset_email(email, token):
     reset_link = f"{current_app.config['BASE_URL']}/reset_password/{token}"
@@ -34,8 +38,12 @@ def send_password_reset_email(email, token):
             <p>If you didn't request this, you can ignore this email.</p>
         """,
     }
-    
-    resend.Emails.send(params)
+
+    try:
+        resend.Emails.send(params)
+        return True
+    except resend.exceptions.ResendError:
+        return False
 
 def send_username_email(email, username):
     params = {
@@ -48,4 +56,9 @@ def send_username_email(email, username):
             Click <a href="https://www.fitnesslogger.app/login">this link</a> to be redirected back to the login page.</p>
         """,
     }
-    resend.Emails.send(params)
+
+    try:
+        resend.Emails.send(params)
+        return True
+    except resend.exceptions.ResendError:
+        return False
