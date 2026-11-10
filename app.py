@@ -79,7 +79,7 @@ def register():
     
     return render_template('register.html')
 
-@app.route('/verify/<token>')
+@app.route('/verify/<token>', methods=['GET'])
 def verify_email(token):
     _, message = verify_user_token(token)
     flash(message)
@@ -161,7 +161,7 @@ def reset_password(token):
     
     return render_template('reset_password.html', token=token)
 
-@app.route("/logout")
+@app.route('/logout', methods=['GET'])
 @login_required
 def logout():
     logout_user()
@@ -170,7 +170,7 @@ def logout():
     return redirect(url_for('login'))
 
 # == MAIN PAGE ==
-@app.route('/')
+@app.route('/', methods=['GET'])
 @login_required
 def index():
     return render_template('landing.html')
@@ -180,7 +180,7 @@ def index():
 # =============
 
 # == HOME ==
-@app.route('/weightlifting_home')
+@app.route('/weightlifting_home', methods=['GET'])
 @login_required
 def weightlifting_index():
     return render_template('weightlifting_index.html')
@@ -193,7 +193,7 @@ def exercises():
     return render_template('exercises.html', exercises=exercises)
 
 # == LOG WORKOUT ==
-@app.route('/log_workout', methods=['POST', 'GET'])
+@app.route('/log_workout', methods=['GET', 'POST'])
 @login_required
 def log_workout():
     user_id = current_user.id
@@ -312,7 +312,7 @@ def log_workout():
                         )
                         
 # == VIEW WORKOUT ==
-@app.route('/view_workout', methods= ['GET', 'POST'])
+@app.route('/view_workout', methods=['GET', 'POST'])
 @login_required
 def view_workout():
     if request.method == 'POST':
@@ -435,7 +435,7 @@ def custom_exercises():
 # =============
 
 # == HOME ==
-@app.route('/cardio_home', methods=['GET', 'POST'])
+@app.route('/cardio_home', methods=['GET'])
 @login_required
 def cardio_index():
     return render_template('cardio_index.html')
@@ -547,7 +547,7 @@ def log_cardio():
                            date_selection=session.setdefault('date_selection', True))
 
 # == VIEW CARDIO SESSION == 
-@app.route('/view_cardio_session', methods= ['GET', 'POST'])
+@app.route('/view_cardio_session', methods=['GET', 'POST'])
 @login_required
 def view_cardio_session():
     if request.method == 'POST':
