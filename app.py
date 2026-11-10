@@ -70,7 +70,7 @@ def register():
             token = generate_token()
             save_verification_token(email, token)
             if not send_verification_email(email, token):
-                flash("Your account was created, but we couldn't send the verification email. Please try again later.")
+                flash("Your account was created, but we couldn't send the verification email. Try logging in to get a new link.")
                 return redirect(url_for('login'))
 
             flash("Registration successful! Check your email to verify your account.")
@@ -99,6 +99,15 @@ def login():
         error = validate_login(user, password)
         if error:
             flash(error)
+            return redirect(url_for('login'))
+
+        if not user['verified']:
+            token = generate_token()
+            save_verification_token(user['email'], token)
+            if not send_verification_email(user['email'], token):
+                flash("Please verify your email before logging in. We couldn't send a new link, please try again.")
+            else:
+                flash("Please verify your email before logging in. We've sent you a new verification link.")
             return redirect(url_for('login'))
 
         login_user(User.from_db_row(user))

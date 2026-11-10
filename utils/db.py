@@ -1,6 +1,6 @@
 #TODO eventually implement logging module
 #TODO do integrity check everynight? before copying maybe?
-#TODO review how exceptions are propogated
+#TODO review how exceptions are propagated
 
 import sqlite3
 from flask import current_app
@@ -49,7 +49,7 @@ def verify_user_token(token):
         if not result:
             return None, "This verification link is invalid or was already used. Try logging in."
         if not result['is_valid']:
-            return None, "This verification link has expired."
+            return None, "This verification link has expired. Log in to get a new one."
 
         c.execute("""UPDATE users SET verified = 1, verification_token = NULL,
                      verification_token_created_at = NULL WHERE id = ?""", (result['id'],))

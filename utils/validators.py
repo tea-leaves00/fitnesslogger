@@ -27,7 +27,5 @@ def validate_registration(first_name, last_name, username, email, password):
 def validate_login(user, password):
     if not user or not password or not check_password_hash(user['password_hash'], password):
         return "Incorrect username or password"
-    if not user['verified']:
-        return "Please verify your email before logging in."
     return None
 
