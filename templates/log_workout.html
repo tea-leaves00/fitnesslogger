@@ -65,7 +65,7 @@
                 <td>{{ set.reps }}</td>
                 <td>{{ set.weight }}</td>
                 <td>
-                    <button class="delete_button" type="submit" name="action" value="delete">
+                    <button class="delete_button" type="submit" name="action" value="delete_{{ loop.index0 }}">
                         <img src="{{ url_for('static', filename='icons/trash.svg') }}" width="15" height="15">
                     </button>
                 </td>
@@ -103,7 +103,7 @@
 
             <td><input type="text" name="exercise_notes"></td>
             <td>
-                <p id="set_number_display"><strong>Set No. {{ session.get('current_set_number', '1') }}</strong></p>
+                <p id="set_number_display"><strong>Set No. {{ set_number }}</strong></p>
                 <br><br>
                 <input type="checkbox" id="same_sets_checkbox"> 
                 <label for="same_sets_checkbox">All sets the same?</label>
@@ -116,7 +116,7 @@
                     {% if current_sets %}value="{{ current_sets[-1].reps }}"{% endif %}>
             </td>
             <td>
-                <input class="weight_input type="number" step="0.5" min=0 name="weight" 
+                <input class="weight_input" type="number" step="0.5" min=0 name="weight" 
                     {% if current_sets %}value="{{ current_sets[-1].weight }}"{% endif %}>
                 <br>
                 <input type="checkbox" name="bodyweight" value="bodyweight">Bodyweight

@@ -4,7 +4,7 @@
 {% block weightlifting_content %}
 <p>Not satisfied with the current list of exercises? 
     Here, you can add custom exercises that will show up in the exercises list only for your profile. 
-    You can add, edit, delete or view your custom exercises from this page at anytime.</p>
+    You can view, edit, or delete your custom exercises from this page at anytime.</p>
 
 <form method="POST">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -13,14 +13,12 @@
     <button type="submit" name="action" value="add_exercise">Add Exercise</button>
 </form>
 
-<form method="POST">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button type="submit" name="action" value="view_exercises">View Your Custom Exercises</button>
-</form>
-
 {% if custom_exercises %}
     {% if editing_exercise %}
-        <form action="/custom_exercises" method="POST">
+        <form id="delete_exercise_form" action="{{ url_for('custom_exercises') }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
+        <form action="{{ url_for('custom_exercises') }}" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <ul class="custom_exercise_list">
             {% for exercise in custom_exercises %}
@@ -28,13 +26,14 @@
                     <input type="hidden" name="old_exercise" value="{{ exercise.exercise }}">
                     <input type="hidden" name="exercise_id" value="{{ exercise.id }}">
                     <input type="text" name="new_exercise" value="{{ exercise.exercise }}">
-                    <button class="delete_button" type="submit" name="action" value="delete_{{ exercise.id }}">
-                        <img src="{{ url_for('static', filename='icons/trash.svg') }}" width="15" height="15">
+                    <button class="delete_button" type="submit" form="delete_exercise_form" name="action" value="delete_{{ exercise.id }}">
+                        <img src="{{ url_for('static', filename='icons/trash.svg') }}" width="15" height="15" alt="Delete">
                     </button>
                 </li>
             {% endfor %}
             </ul>
             <button type="submit" name="action" value="save_changes">Save Changes</button>
+            <a href="{{ url_for('custom_exercises') }}">Cancel</a>
         </form>
     {% else %}
         <ul>
@@ -42,11 +41,10 @@
             <li>{{ exercise.exercise }}</li>
         {% endfor %}
         </ul>
-        <form method="POST">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" name="action" value="edit_exercises">Edit exercises</button>
-        </form>
+        <a href="{{ url_for('custom_exercises', edit=1) }}">Edit exercises</a>
     {% endif %}
+{% else %}
+    <p>No custom exercises yet</p>
 {% endif %}
 {% endblock %}
 

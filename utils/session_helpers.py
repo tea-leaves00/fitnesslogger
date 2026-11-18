@@ -1,52 +1,64 @@
 import secrets
+import hashlib
 
-def generate_verification_token():
+def generate_token():
     return secrets.token_urlsafe(32)
+
+def hash_token(token):
+    return hashlib.sha256(token.encode()).hexdigest()
 
 def get_db_duration(hours, minutes, seconds):
     return (hours * 3600) + (minutes * 60) + seconds    
 
-def group_sets(current_sets):
-    grouped_sets = {}
-    for set_data in current_sets:
+def get_set_number(current_sets, exercise_id, is_custom):
+    if current_sets:
+        last_set = current_sets[-1]
+        if (last_set['exercise_id'], last_set['is_custom']) == (exercise_id, is_custom):
+            return last_set['set_number'] + (last_set['sets'] if last_set['same_sets'] else 1)
+    return 1
+
+def group_sets(sets):
+    grouped_sets = []
+    for set_data in sets:
         if set_data['is_custom']: exercise_id, custom_exercise_id = None, set_data['exercise_id']
         else: exercise_id, custom_exercise_id = set_data['exercise_id'], None
 
-        key = (exercise_id, custom_exercise_id)
-        if key not in grouped_sets:
-            grouped_sets[key] = {
+        if not grouped_sets or (grouped_sets[-1]['exercise_id'], grouped_sets[-1]['custom_exercise_id']) != (exercise_id, custom_exercise_id):
+            grouped_sets.append({
                 'exercise_id': exercise_id,
                 'custom_exercise_id': custom_exercise_id,
                 'exercise_notes': set_data['exercise_notes'],
                 'sets': []
-            }
+            })
 
-        if set_data['same_sets']:
-            for set_number in range(1, set_data['sets'] + 1):
-                grouped_sets[key]['sets'].append((set_number, set_data['reps'], set_data['weight']))
-        else:
-            grouped_sets[key]['sets'].append((set_data['set_number'], set_data['reps'], set_data['weight']))
+        set_count = set_data['sets'] if set_data['same_sets'] else 1
+        for _ in range(set_count):
+            set_number = len(grouped_sets[-1]['sets']) + 1
+            grouped_sets[-1]['sets'].append((set_number, set_data['reps'], set_data['weight']))
 
-    return list(grouped_sets.values())
+    return grouped_sets
 
-def group_logs(current_logs):
-    return [(log['cardio_type_id'], log['custom_cardio_id'], log['db_duration'],
-              log['distance'], log['distance_unit'], log['intensity'])
-            for log in current_logs]
+def group_logs(logs):
+    grouped_logs = []
+    for log in logs:
+        if log['is_custom']: cardio_type_id, custom_cardio_id = None, log['cardio_type_id']
+        else: cardio_type_id, custom_cardio_id = log['cardio_type_id'], None
+
+        grouped_logs.append((cardio_type_id, custom_cardio_id, log['db_duration'],
+                             log['distance'], log['distance_unit'], log['intensity']))
+    return grouped_logs
 
 def clear_workout_session(session):
     keys = [
         'current_sets', 'session_date', 'session_notes',
-        'date_selection', 'same_sets', 'current_set_number',
-        'current_exercise'
+        'date_selection'
     ]
     for key in keys:
         session.pop(key, None)
 
 def clear_sets(session):
     keys = [
-        'current_sets', 'same_sets', 'current_set_number',
-        'current_exercise'
+        'current_sets'
     ]
     for key in keys:
         session.pop(key, None)

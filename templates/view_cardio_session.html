@@ -5,32 +5,30 @@
 
 <form method="POST">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="date" name="session_date" value="{{ session.get('session_date', '') }}">
+    <input type="date" name="session_date" value="{{ session.get('view_cardio_date', '') }}">
     <button type="submit" name="action" value="view">View Session</button>
 </form>
 
 {% if cardio_session %}
-    {% for session_id, session_date, session_notes, 
-        log_id, duration, distance, distance_unit, 
-        intensity, cardio_type in cardio_session %}
+    {% for log in cardio_session %}
 
         {% if loop.first %}
-            <strong><p>{{ session_date }}</p></strong>
-            <p>Session Notes: {{ session_notes }}</p>
+            <strong><p>{{ log.session_date }}</p></strong>
+            <p>Session Notes: {{ log.session_notes }}</p>
             <p>-----------------</p>
         {% endif %}
 
-        {% if loop.previtem and loop.previtem[0] != session_id %}
+        {% if loop.previtem and loop.previtem.session_id != log.session_id %}
             <p>-------------------------------</p>
+            <p>Session Notes: {{ log.session_notes }}</p>
+            <p>-----------------</p>
         {% endif%}
 
-        {% if loop.first or (loop.previtem and loop.previtem[8] != cardio_type) %}
-            <strong><p>{{ cardio_type }}</p></strong>
-        {% endif %}
+        <strong><p>{{ log.cardio_type }}</p></strong>
 
-        {% if duration %}
-            {% set hours = duration // 3600 %}
-            {% set remaining = duration % 3600 %}
+        {% if log.duration %}
+            {% set hours = log.duration // 3600 %}
+            {% set remaining = log.duration % 3600 %}
             {% set minutes = remaining // 60 %}
             {% set seconds = remaining % 60 %}
             <p>Duration: {{ hours }}h {{ minutes }}m {{ seconds }}s</p>
@@ -38,18 +36,18 @@
             <p>Duration: N/A</p>
         {% endif %}
 
-        {% if distance %}
-            <p>Distance: {{ distance }} {{ distance_unit}}</p>
+        {% if log.distance %}
+            <p>Distance: {{ log.distance }} {{ log.distance_unit}}</p>
         {% else %}
             <p>Distance: N/A</p>
         {% endif %}
-        <p>Intensity (scale 1-10): {{ intensity }}</p>
+        <p>Intensity (scale 1-10): {{ log.intensity }}</p>
 
         
     {% endfor %}
-    <a href="{{ url_for('edit_cardio_session', session_date=cardio_session[0][1]) }}">Edit Session</a>
+    <a href="{{ url_for('edit_cardio_session', session_date=cardio_session[0].session_date) }}">Edit Session</a>
 
-{% elif cardio_searched %}
+{% elif session_searched %}
     <p>No session found</p>
 {%  endif %}
 {% endblock %}

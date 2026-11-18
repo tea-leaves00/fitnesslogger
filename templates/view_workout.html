@@ -5,44 +5,44 @@
 
 <form action="{{ url_for('view_workout') }}" method="POST">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="date" name="session_date" value="{{ session.get('session_date', '') }}">
+    <input type="date" name="session_date" value="{{ session.get('view_workout_date', '') }}">
     <button type="submit" name="action" value="view">View Workout</button>
 </form>
 
 {% if workouts %}
-    {% for session_id, session_date, session_notes, 
-        workout_log_id, exercise_name, exercise_notes, 
-        set_id, set_number, reps, weight, is_time_based in workouts %}
+    {% for workout in workouts %}
 
         {% if loop.first %}
-            <strong><p>{{ session_date }}</p></strong>
-            <p>Session Notes: {{ session_notes }}</p>
+            <strong><p>{{ workout.session_date }}</p></strong>
+            <p>Session Notes: {{ workout.session_notes }}</p>
             <p>-----------------</p>
         {% endif %}
 
-        {% if loop.previtem and loop.previtem[0] != session_id %}
+        {% if loop.previtem and loop.previtem.session_id != workout.session_id %}
             <p>-------------------------------</p>
+            <p>Session Notes: {{ workout.session_notes }}</p>
+            <p>-----------------</p>
         {% endif%}
 
-        {% if loop.first or (loop.previtem and loop.previtem[4] != exercise_name) %}
-            <strong><p>Exercise: {{ exercise_name }}</p></strong>
-            <p>Exercise Notes: {{ exercise_notes }}</p>
+        {% if loop.first or (loop.previtem and loop.previtem.exercise != workout.exercise) %}
+            <strong><p>Exercise: {{ workout.exercise }}</p></strong>
+            <p>Exercise Notes: {{ workout.exercise_notes }}</p>
         {% endif %}
 
-        {% if is_time_based %}
-            {% set minutes = reps // 60 %}
-            {% set seconds = reps % 60 %}
-            <p>Set {{ set_number }}: {{ minutes }} minutes:{{ '%02d' | format(seconds) }} seconds{% if weight %}, {{ weight }} lbs{% endif %}</p>
+        {% if workout.is_time_based %}
+            {% set minutes = workout.reps // 60 %}
+            {% set seconds = workout.reps % 60 %}
+            <p>Set {{ workout.set_number }}: {{ minutes }} minutes:{{ '%02d' | format(seconds) }} seconds{% if workout.weight %}, {{ workout.weight }} lbs{% endif %}</p>
         {% else %}
-            {% if weight is none %}
-                <p>Set {{ set_number }}: {{ reps }} reps, Bodyweight</p>
+            {% if workout.weight is none %}
+                <p>Set {{ workout.set_number }}: {{ workout.reps }} reps, Bodyweight</p>
             {% else %}
-                <p>Set {{ set_number }}: {{ reps }} reps, {{ weight }} lbs</p>
+                <p>Set {{ workout.set_number }}: {{ workout.reps }} reps, {{ workout.weight }} lbs</p>
             {% endif %}
         {% endif %}
 
     {% endfor %}
-    <a href="{{ url_for('edit_workout', session_date=workouts[0][1]) }}">Edit Workout</a>
+    <a href="{{ url_for('edit_workout', session_date=workouts[0].session_date) }}">Edit Workout</a>
 
 {% elif workout_searched %}
     <strong><p>No workouts found</p></strong>

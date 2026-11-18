@@ -18,7 +18,7 @@
             {% endif %}
         {% endwith %}
 
-        <form action="/login" method="POST">
+        <form action="{{ url_for('login', next=request.args.get('next')) }}" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <label for="username">Username</label>
             <input type="text" name="username" id="username">
