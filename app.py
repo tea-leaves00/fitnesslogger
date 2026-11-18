@@ -57,7 +57,7 @@ def register():
         first_name = request.form.get('first_name', '').strip()
         last_name = request.form.get('last_name', '').strip()
         username = request.form.get('username', '').strip()
-        email = request.form.get('email', '').strip()
+        email = request.form.get('email', '').strip().lower()
         password = request.form.get('password')
 
         error = validate_registration(first_name, last_name, username, email, password)
@@ -122,7 +122,7 @@ def login():
 @limiter.limit("10 per minute", methods=['POST'])
 def forgot_username():
     if request.method == 'POST':
-        email = request.form.get('email', '').strip()
+        email = request.form.get('email', '').strip().lower()
         user = get_user(email=email)
 
         if user and not send_username_email(email, user['username']):
@@ -138,7 +138,7 @@ def forgot_username():
 @limiter.limit("10 per minute", methods=['POST'])
 def forgot_password():
     if request.method == 'POST':
-        email = request.form.get('email', '').strip()
+        email = request.form.get('email', '').strip().lower()
         user = get_user(email=email)
         
         if user:
