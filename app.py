@@ -213,10 +213,8 @@ def exercises():
 @app.route('/log_workout', methods=['GET', 'POST'])
 @login_required
 def log_workout():
-    user_id = current_user.id
-
     exercises = get_exercises()
-    custom_exercises = get_custom_exercises(user_id)
+    custom_exercises = get_custom_exercises(current_user.id)
     exercise_ids = {row['exercise']: row['id'] for row in exercises}
     custom_exercise_ids = {row['exercise']: row['id'] for row in custom_exercises}
 
@@ -308,7 +306,7 @@ def log_workout():
                 return redirect(url_for('log_workout'))
 
             grouped_sets = group_sets(session['current_sets'])
-            if not create_workout(session['session_date'], session['session_notes'], user_id, grouped_sets):
+            if not create_workout(session['session_date'], session['session_notes'], current_user.id, grouped_sets):
                 flash("Your workout couldn't be saved. Check that your exercises and date are still valid")
                 return redirect(url_for('log_workout'))
 
@@ -410,22 +408,20 @@ def edit_workout(session_date):
 @app.route('/custom_exercises', methods=['GET', 'POST'])
 @login_required
 def custom_exercises():
-    user_id = current_user.id
-
     if request.method == 'POST':
         if request.form.get('action') == 'add_exercise':
             custom_exercise = request.form.get('create_custom_exercise').strip()
             if not custom_exercise:
                 flash("Please enter name of exercise")
                 return redirect(url_for('custom_exercises'))
-            if not create_custom_exercise(user_id, custom_exercise):
+            if not create_custom_exercise(current_user.id, custom_exercise):
                 flash(f"You already have an exercise named '{custom_exercise}'")
                 return redirect(url_for('custom_exercises'))
             flash('Custom exercise added successfully!')
             return redirect(url_for('custom_exercises'))
         elif request.form.get('action').startswith('delete_'):
             exercise_id = request.form.get('action').split('_')[1]
-            if not delete_custom_exercise(user_id, exercise_id):
+            if not delete_custom_exercise(current_user.id, exercise_id):
                 flash("Can't delete this exercise — it's been used in a workout.")
             return redirect(url_for('custom_exercises', edit=1))
         elif request.form.get('action') == 'save_changes':
@@ -434,13 +430,13 @@ def custom_exercises():
             new_exercises = [name.strip() for name in request.form.getlist('new_exercise')]
             for exercise_id, old_exercise, new_exercise in zip(exercise_ids, old_exercises, new_exercises):
                 if old_exercise != new_exercise:
-                    if not new_exercise or not update_custom_exercise(user_id, new_exercise, exercise_id):
+                    if not new_exercise or not update_custom_exercise(current_user.id, new_exercise, exercise_id):
                         flash(f"Couldn't rename '{old_exercise}' (blank or duplicate name). Any edits below it weren't saved.")
                         return redirect(url_for('custom_exercises', edit=1))
             flash("Exercises successfully edited")
             return redirect(url_for('custom_exercises'))
 
-    custom_exercises = get_custom_exercises(user_id)
+    custom_exercises = get_custom_exercises(current_user.id)
     editing_exercise = request.args.get('edit')
     return render_template('custom_exercises.html',
                            custom_exercises=custom_exercises, 
@@ -461,10 +457,8 @@ def cardio_index():
 @app.route('/log_cardio', methods=['GET', 'POST'])
 @login_required
 def log_cardio():
-    user_id = current_user.id
-
     cardio_types = get_cardio_types()
-    custom_cardio = get_custom_cardio(user_id)
+    custom_cardio = get_custom_cardio(current_user.id)
     cardio_type_ids = {row['cardio_type']: row['id'] for row in cardio_types}
     custom_cardio_ids = {row['cardio_type']: row['id'] for row in custom_cardio}
 
@@ -543,7 +537,7 @@ def log_cardio():
                 return redirect(url_for('log_cardio'))
 
             grouped_logs = group_logs(session['current_logs'])
-            if not create_cardio_session(session['session_date'], session['session_notes'], user_id, grouped_logs):
+            if not create_cardio_session(session['session_date'], session['session_notes'], current_user.id, grouped_logs):
                 flash("Your cardio session couldn't be saved. Check that your cardio types and date are still valid")
                 return redirect(url_for('log_cardio'))
 
@@ -657,22 +651,20 @@ def edit_cardio_session(session_date):
 @app.route('/custom_cardio', methods=['GET', 'POST'])
 @login_required
 def custom_cardio():
-    user_id = current_user.id
-
     if request.method == 'POST':
         if request.form.get('action') == 'add_cardio':
             custom_cardio_type = request.form.get('create_custom_cardio').strip()
             if not custom_cardio_type:
                 flash("Please enter a name for the cardio type")
                 return redirect(url_for('custom_cardio'))
-            if not create_custom_cardio(user_id, custom_cardio_type):
+            if not create_custom_cardio(current_user.id, custom_cardio_type):
                 flash(f"You already have a cardio type named '{custom_cardio_type}'")
                 return redirect(url_for('custom_cardio'))
             flash('Custom cardio added successfully!')
             return redirect(url_for('custom_cardio'))
         elif request.form.get('action').startswith('delete_'):
             cardio_id = request.form.get('action').split('_')[1]
-            if not delete_custom_cardio(user_id, cardio_id):
+            if not delete_custom_cardio(current_user.id, cardio_id):
                 flash("Can't delete this cardio type — it's been used in a session.")
             return redirect(url_for('custom_cardio', edit=1))
         elif request.form.get('action') == 'save_changes':
@@ -681,13 +673,13 @@ def custom_cardio():
             new_cardio_types = [name.strip() for name in request.form.getlist('new_cardio')]
             for cardio_id, old_cardio_type, new_cardio_type in zip(cardio_ids, old_cardio_types, new_cardio_types):
                 if old_cardio_type != new_cardio_type:
-                    if not new_cardio_type or not update_custom_cardio(user_id, new_cardio_type, cardio_id):
+                    if not new_cardio_type or not update_custom_cardio(current_user.id, new_cardio_type, cardio_id):
                         flash(f"Couldn't rename '{old_cardio_type}' (blank or duplicate name). Any edits below it weren't saved.")
                         return redirect(url_for('custom_cardio', edit=1))
             flash("Cardio types successfully edited")
             return redirect(url_for('custom_cardio'))
 
-    custom_cardio = get_custom_cardio(user_id)
+    custom_cardio = get_custom_cardio(current_user.id)
     editing_cardio = request.args.get('edit')
     return render_template('custom_cardio.html', custom_cardio=custom_cardio, editing_cardio=editing_cardio)
 
