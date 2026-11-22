@@ -30,3 +30,8 @@ class LoginForm(FlaskForm):
     username = StringField('Username', filters=[strip], validators=[DataRequired()])
     password = PasswordField('Password', validators=[DataRequired()])
     submit   = SubmitField('Login')
+
+
+class ForgotLoginForm(FlaskForm):
+    email  = EmailField('Email', filters=[strip, lower], validators=[DataRequired(), Email()])
+    submit = SubmitField('Send Email')

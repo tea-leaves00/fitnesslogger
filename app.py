@@ -9,7 +9,7 @@ from utils.db import *
 from utils.session_helpers import *
 from utils.email_service import *
 from utils.validators import validate_password_reset, is_safe_next
-from utils.forms import RegistrationForm, LoginForm
+from utils.forms import RegistrationForm, LoginForm, ForgotLoginForm
 import os
 
 # == APP CONFIG ==
@@ -109,8 +109,9 @@ def login():
 @app.route('/forgot_username', methods=['GET', 'POST'])
 @limiter.limit("10 per minute", methods=['POST'])
 def forgot_username():
-    if request.method == 'POST':
-        email = request.form.get('email', '').strip().lower()
+    form = ForgotLoginForm()
+    if form.validate_on_submit():
+        email = form.email.data
         user = get_user(email=email)
 
         if user and not send_username_email(email, user['username']):
@@ -120,7 +121,7 @@ def forgot_username():
         flash("If an account with that email exists, you'll receive an email shortly.")
         return redirect(url_for('forgot_username'))
 
-    return render_template('forgot_username.html')
+    return render_template('forgot_username.html', form=form)
  
 @app.route('/forgot_password', methods=['GET', 'POST'])
 @limiter.limit("10 per minute", methods=['POST'])
