@@ -35,3 +35,10 @@ class LoginForm(FlaskForm):
 class ForgotLoginForm(FlaskForm):
     email  = EmailField('Email', filters=[strip, lower], validators=[DataRequired(), Email()])
     submit = SubmitField('Send Email')
+
+class ResetPasswordForm(FlaskForm):
+    password = PasswordField('Password', 
+                                validators=[DataRequired(), Length(min=MIN_PASSWORD_LENGTH, message=f'Must be at least {MIN_PASSWORD_LENGTH} characters')])
+    confirm  = PasswordField('Confirm Password',
+                                validators=[DataRequired(), EqualTo('password', message='Passwords must match')])
+    submit   = SubmitField('Reset Password')

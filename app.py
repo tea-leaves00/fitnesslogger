@@ -8,8 +8,8 @@ from utils.user_class import User
 from utils.db import *
 from utils.session_helpers import *
 from utils.email_service import *
-from utils.validators import validate_password_reset, is_safe_next
-from utils.forms import RegistrationForm, LoginForm, ForgotLoginForm
+from utils.validators import is_safe_next
+from utils.forms import RegistrationForm, LoginForm, ForgotLoginForm, ResetPasswordForm
 import os
 
 # == APP CONFIG ==
@@ -146,27 +146,19 @@ def forgot_password():
 @app.route('/reset_password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
     user_id, message = verify_reset_token(token)
-    
     if not user_id:
         flash(message)
         return redirect(url_for('forgot_password'))
 
-    if request.method == 'POST':
-        password = request.form.get('password')
-        confirmation = request.form.get('confirmation')
-
-        error = validate_password_reset(password, confirmation)
-        if error:
-            flash(error)
-            return redirect(url_for('reset_password', token=token))
-        
-        password_hash = generate_password_hash(password)
+    form = ResetPasswordForm()
+    if form.validate_on_submit():
+        password_hash = generate_password_hash(form.password.data)
         update_password(user_id, password_hash)
         
         flash("Password updated! You can now log in.")
         return redirect(url_for('login'))
     
-    return render_template('reset_password.html', token=token)
+    return render_template('reset_password.html', token=token, form=form)
 
 @app.route('/logout', methods=['GET'])
 @login_required
