@@ -8,7 +8,6 @@ from utils.user_class import User
 from utils.db import *
 from utils.session_helpers import *
 from utils.email_service import *
-from utils.validators import is_safe_next
 from utils.forms import RegistrationForm, LoginForm, ForgotLoginForm, ResetPasswordForm
 import os
 
