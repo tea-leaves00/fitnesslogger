@@ -126,8 +126,9 @@ def forgot_username():
 @app.route('/forgot_password', methods=['GET', 'POST'])
 @limiter.limit("10 per minute", methods=['POST'])
 def forgot_password():
-    if request.method == 'POST':
-        email = request.form.get('email', '').strip().lower()
+    form = ForgotLoginForm()
+    if form.validate_on_submit():
+        email = form.email.data
         user = get_user(email=email)
         
         if user:
@@ -140,7 +141,7 @@ def forgot_password():
         flash("If an account with that email exists, you'll receive a reset link.")
         return redirect(url_for('forgot_password'))
     
-    return render_template('forgot_password.html')
+    return render_template('forgot_password.html', form=form)
 
 @app.route('/reset_password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
