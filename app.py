@@ -8,7 +8,8 @@ from utils.user_class import User
 from utils.db import *
 from utils.session_helpers import *
 from utils.email_service import *
-from utils.validators import validate_registration, validate_password_reset, validate_login, is_safe_next
+from utils.validators import validate_password_reset, validate_login, is_safe_next
+from utils.forms import RegistrationForm
 import os
 
 # == APP CONFIG ==
@@ -53,33 +54,24 @@ def load_user(user_id):
 @app.route('/register', methods=['GET', 'POST'])
 @limiter.limit("10 per minute", methods=['POST'])
 def register():
-    if request.method == 'POST':
-        first_name = request.form.get('first_name', '').strip()
-        last_name = request.form.get('last_name', '').strip()
-        username = request.form.get('username', '').strip()
-        email = request.form.get('email', '').strip().lower()
-        password = request.form.get('password')
-
-        error = validate_registration(first_name, last_name, username, email, password)
-        if error:
-            flash(error)
-            return redirect(url_for('register'))
-
-        password_hash = generate_password_hash(password)
-        if create_user(first_name, last_name, username, password_hash, email):
-            token = generate_token()
-            save_verification_token(email, token)
-            if not send_verification_email(email, token):
-                flash("Your account was created, but we couldn't send the verification email. Try logging in to get a new link.")
-                return redirect(url_for('login'))
-
-            flash("Registration successful! Check your email to verify your account.")
-            return redirect(url_for('register'))
-        else:
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        password_hash = generate_password_hash(form.password.data)
+        if not create_user(form.first_name.data, form.last_name.data,
+                           form.username.data, password_hash, form.email.data):
             flash("Username or email already exists.")
-            return redirect(url_for('register'))
-    
-    return render_template('register.html')
+            return render_template('register.html', form=form)
+
+        token = generate_token()
+        save_verification_token(form.email.data, token)
+        if not send_verification_email(form.email.data, token):
+            flash("Your account was created, but we couldn't send the verification email. Try logging in to get a new link.")
+            return redirect(url_for('login'))
+
+        flash("Registration successful! Check your email to verify your account.")
+        return redirect(url_for('register'))
+
+    return render_template('register.html', form=form)
 
 @app.route('/verify/<token>', methods=['GET'])
 def verify_email(token):

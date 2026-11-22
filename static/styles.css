@@ -386,6 +386,13 @@ main form input[type="email"] {
     width: 100%;
 }
 
+.field_error {
+    color: var(--error-color);
+    font-size: 0.9em;
+    text-align: center;
+    margin-bottom: 8px;
+}
+
 /* LANDING PAGE AND HEADERS*/
 .landing_page {
     background: var(--primary-color);
