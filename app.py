@@ -3,13 +3,13 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFProtect
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 from utils.user_class import User
 from utils.db import *
 from utils.session_helpers import *
 from utils.email_service import *
-from utils.validators import validate_password_reset, validate_login, is_safe_next
-from utils.forms import RegistrationForm
+from utils.validators import validate_password_reset, is_safe_next
+from utils.forms import RegistrationForm, LoginForm
 import os
 
 # == APP CONFIG ==
@@ -82,17 +82,13 @@ def verify_email(token):
 @app.route('/login', methods=['GET', 'POST'])
 @limiter.limit("10 per minute", methods=['POST'])
 def login():
-    if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password')
-        next_url = request.args.get('next')
-
-        user = get_user(username=username)
-
-        error = validate_login(user, password)
-        if error:
-            flash(error)
-            return redirect(url_for('login', next=next_url))
+    form = LoginForm()
+    next_url = request.args.get('next')
+    if form.validate_on_submit():
+        user = get_user(username=form.username.data)
+        if not user or not check_password_hash(user['password_hash'], form.password.data):
+            flash("Incorrect username or password")
+            return render_template('login.html', form=form)
 
         if not user['verified']:
             token = generate_token()
@@ -101,14 +97,14 @@ def login():
                 flash("Please verify your email before logging in. We couldn't send a new link, please try again.")
             else:
                 flash("Please verify your email before logging in. We've sent you a new verification link.")
-            return redirect(url_for('login', next=next_url))
+            return render_template('login.html', form=form)
 
         login_user(User.from_db_row(user))
         if next_url and is_safe_next(next_url):
             return redirect(next_url)
         return redirect(url_for('index'))
-        
-    return render_template('login.html')
+
+    return render_template('login.html', form=form)
 
 @app.route('/forgot_username', methods=['GET', 'POST'])
 @limiter.limit("10 per minute", methods=['POST'])
