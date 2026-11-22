@@ -19,7 +19,7 @@
             {% endif %}
         {% endwith %}
 
-        <form action="{{ url_for('login', next=request.args.get('next')) }}" method="POST">
+        <form action="{{ url_for('login', next=request.args.get('next')) }}" method="POST" novalidate>
             {{ form.hidden_tag() }}
             {{ render_field(form.username) }}
             {{ render_field(form.password) }}

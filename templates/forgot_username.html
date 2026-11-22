@@ -16,7 +16,7 @@
             {% endfor %}
         {% endif %}
     {% endwith %}
-    <form action="{{ url_for('forgot_username') }}" method="POST">
+    <form action="{{ url_for('forgot_username') }}" method="POST" novalidate>
         {{ form.hidden_tag() }}
         {{ render_field(form.email) }}
         <button type="submit">Send Email</button>
