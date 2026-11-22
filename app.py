@@ -3,12 +3,12 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFProtect
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 from utils.user_class import User
 from utils.db import *
 from utils.session_helpers import *
 from utils.email_service import *
-from utils.validators import validate_registration, validate_password_reset, validate_login, is_safe_next
+from utils.forms import RegistrationForm, LoginForm, ForgotLoginForm, ResetPasswordForm
 import os
 
 # == APP CONFIG ==
@@ -53,33 +53,24 @@ def load_user(user_id):
 @app.route('/register', methods=['GET', 'POST'])
 @limiter.limit("10 per minute", methods=['POST'])
 def register():
-    if request.method == 'POST':
-        first_name = request.form.get('first_name', '').strip()
-        last_name = request.form.get('last_name', '').strip()
-        username = request.form.get('username', '').strip()
-        email = request.form.get('email', '').strip().lower()
-        password = request.form.get('password')
-
-        error = validate_registration(first_name, last_name, username, email, password)
-        if error:
-            flash(error)
-            return redirect(url_for('register'))
-
-        password_hash = generate_password_hash(password)
-        if create_user(first_name, last_name, username, password_hash, email):
-            token = generate_token()
-            save_verification_token(email, token)
-            if not send_verification_email(email, token):
-                flash("Your account was created, but we couldn't send the verification email. Try logging in to get a new link.")
-                return redirect(url_for('login'))
-
-            flash("Registration successful! Check your email to verify your account.")
-            return redirect(url_for('register'))
-        else:
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        password_hash = generate_password_hash(form.password.data)
+        if not create_user(form.first_name.data, form.last_name.data,
+                           form.username.data, password_hash, form.email.data):
             flash("Username or email already exists.")
-            return redirect(url_for('register'))
-    
-    return render_template('register.html')
+            return render_template('register.html', form=form)
+
+        token = generate_token()
+        save_verification_token(form.email.data, token)
+        if not send_verification_email(form.email.data, token):
+            flash("Your account was created, but we couldn't send the verification email. Try logging in to get a new link.")
+            return redirect(url_for('login'))
+
+        flash("Registration successful! Check your email to verify your account.")
+        return redirect(url_for('register'))
+
+    return render_template('register.html', form=form)
 
 @app.route('/verify/<token>', methods=['GET'])
 def verify_email(token):
@@ -90,17 +81,13 @@ def verify_email(token):
 @app.route('/login', methods=['GET', 'POST'])
 @limiter.limit("10 per minute", methods=['POST'])
 def login():
-    if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password')
-        next_url = request.args.get('next')
-
-        user = get_user(username=username)
-
-        error = validate_login(user, password)
-        if error:
-            flash(error)
-            return redirect(url_for('login', next=next_url))
+    form = LoginForm()
+    next_url = request.args.get('next')
+    if form.validate_on_submit():
+        user = get_user(username=form.username.data)
+        if not user or not check_password_hash(user['password_hash'], form.password.data):
+            flash("Incorrect username or password")
+            return render_template('login.html', form=form)
 
         if not user['verified']:
             token = generate_token()
@@ -109,20 +96,21 @@ def login():
                 flash("Please verify your email before logging in. We couldn't send a new link, please try again.")
             else:
                 flash("Please verify your email before logging in. We've sent you a new verification link.")
-            return redirect(url_for('login', next=next_url))
+            return render_template('login.html', form=form)
 
         login_user(User.from_db_row(user))
         if next_url and is_safe_next(next_url):
             return redirect(next_url)
         return redirect(url_for('index'))
-        
-    return render_template('login.html')
+
+    return render_template('login.html', form=form)
 
 @app.route('/forgot_username', methods=['GET', 'POST'])
 @limiter.limit("10 per minute", methods=['POST'])
 def forgot_username():
-    if request.method == 'POST':
-        email = request.form.get('email', '').strip().lower()
+    form = ForgotLoginForm()
+    if form.validate_on_submit():
+        email = form.email.data
         user = get_user(email=email)
 
         if user and not send_username_email(email, user['username']):
@@ -132,13 +120,14 @@ def forgot_username():
         flash("If an account with that email exists, you'll receive an email shortly.")
         return redirect(url_for('forgot_username'))
 
-    return render_template('forgot_username.html')
+    return render_template('forgot_username.html', form=form)
  
 @app.route('/forgot_password', methods=['GET', 'POST'])
 @limiter.limit("10 per minute", methods=['POST'])
 def forgot_password():
-    if request.method == 'POST':
-        email = request.form.get('email', '').strip().lower()
+    form = ForgotLoginForm()
+    if form.validate_on_submit():
+        email = form.email.data
         user = get_user(email=email)
         
         if user:
@@ -151,32 +140,24 @@ def forgot_password():
         flash("If an account with that email exists, you'll receive a reset link.")
         return redirect(url_for('forgot_password'))
     
-    return render_template('forgot_password.html')
+    return render_template('forgot_password.html', form=form)
 
 @app.route('/reset_password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
     user_id, message = verify_reset_token(token)
-    
     if not user_id:
         flash(message)
         return redirect(url_for('forgot_password'))
 
-    if request.method == 'POST':
-        password = request.form.get('password')
-        confirmation = request.form.get('confirmation')
-
-        error = validate_password_reset(password, confirmation)
-        if error:
-            flash(error)
-            return redirect(url_for('reset_password', token=token))
-        
-        password_hash = generate_password_hash(password)
+    form = ResetPasswordForm()
+    if form.validate_on_submit():
+        password_hash = generate_password_hash(form.password.data)
         update_password(user_id, password_hash)
         
         flash("Password updated! You can now log in.")
         return redirect(url_for('login'))
     
-    return render_template('reset_password.html', token=token)
+    return render_template('reset_password.html', token=token, form=form)
 
 @app.route('/logout', methods=['GET'])
 @login_required

@@ -17,8 +17,8 @@ class DevConfig(Config):
 
 class ProdConfig(Config):
     DEBUG = False
-    SESSION_COOKIE_SECURE = True
     BASE_URL = "https://www.fitnesslogger.app"
+    SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_SAMESITE='Lax'
     TRUSTED_HOSTS = ['fitnesslogger.app', 'www.fitnesslogger.app']
     DB_PATH = os.path.join(Config.BASE_DIR, "fitnesslogger.db")

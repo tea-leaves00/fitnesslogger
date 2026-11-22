@@ -1,5 +1,6 @@
 import secrets
 import hashlib
+from urllib.parse import urlsplit
 
 def generate_token():
     return secrets.token_urlsafe(32)
@@ -77,3 +78,8 @@ def clear_logs(session):
     ]
     for key in keys:
         session.pop(key, None)
+
+def is_safe_next(next_url):
+    parts = urlsplit(next_url)
+    return (not parts.scheme and not parts.netloc and next_url.startswith('/')
+            and not next_url.startswith('//') and '\\' not in next_url)
